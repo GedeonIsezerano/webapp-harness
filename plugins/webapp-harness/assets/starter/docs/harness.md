@@ -53,11 +53,44 @@ not passed.
 2. Merge the harness dependencies and pytest configuration into the repository's existing `pyproject.toml`, or use the supplied file when none exists.
 3. Run `uv sync --dev` and commit `uv.lock`.
 4. Run the generic harness tests and state validator.
-5. Submit `SETUP_PROMPT.md` in a Codex setup thread.
-6. Let that thread inspect real commands, browser startup, Git policy, and repository structure, then update `.harness/config.json` and tests.
-7. Confirm the setup thread stops without selecting a backlog task.
-8. Populate `.harness/backlog.json` and validate it.
-9. Invoke `$webapp-harness:orchestrate-development-cycle` from a fresh Codex
+5. Invoke `$webapp-harness:initialize-harness`.
+6. Let that workflow inspect real commands, browser startup, Git policy, and
+   repository structure, then update `.harness/config.json` and tests.
+7. Review its evidence-backed proposed backlog. Initialization must request
+   explicit confirmation before appending any tasks.
+8. Confirm, revise, or cancel the proposal. Confirmed tasks are appended as
+   `proposed`, never automatically made runnable.
+9. Promote an accepted task explicitly:
+
+   ```bash
+uv run python -B scripts/harness/update_task_state.py <task-id> ready \
+     --reason user_approved
+   ```
+
+10. Invoke `$webapp-harness:orchestrate-development-cycle` from a fresh Codex
    thread to process exactly one task.
+
+## Gap-based backlog generation
+
+Run `$webapp-harness:generate-backlog` after initialization or whenever the
+repository's requirements, implementation, and verification evidence have
+drifted. The workflow audits through a read-only subagent and writes a proposal
+to a temporary file. It then validates and previews every task before asking
+for confirmation.
+
+The deterministic merge command has two phases:
+
+```bash
+uv run python -B scripts/harness/merge_backlog_proposal.py \
+  --proposal <proposal.json> --plan
+uv run python -B scripts/harness/merge_backlog_proposal.py \
+  --proposal <proposal.json> --apply --confirmed \
+  --expected-sha256 <sha256-from-plan>
+```
+
+Apply rejects changed proposal content, duplicate task IDs, dependency cycles,
+unknown dependencies, unknown verification profiles, missing gap evidence, and
+tasks not in `proposed` status. It appends tasks without replacing existing
+backlog entries.
 
 Completed task commits use `<TASK-ID>: <title>` with task, run, acceptance-criterion, and evidence metadata in the body. The created commit hash is recorded afterward in mutable run/state metadata.

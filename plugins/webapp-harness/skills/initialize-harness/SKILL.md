@@ -1,12 +1,12 @@
 ---
 name: initialize-harness
-description: Initialize, upgrade, or repair the Codex sequential web-development harness in the current Git repository. Use when a repository does not yet contain `.harness`, when starter files must be merged safely with existing Python or agent configuration, or when an installed harness must be checked against this plugin without starting a product task.
+description: Initialize, upgrade, or repair the Codex sequential web-development harness in the current Git repository, then audit repository gaps and preview a proposed backlog for explicit user confirmation. Use when a repository does not yet contain `.harness`, when starter files must be merged safely with existing Python or agent configuration, or when an installed harness must be checked against this plugin without starting a product task.
 ---
 
 # Initialize Harness
 
-Install the repository-native harness without implementing or selecting a
-product task.
+Install the repository-native harness, then generate a confirmable proposed
+backlog without implementing or selecting a product task.
 
 ## Workflow
 
@@ -62,8 +62,14 @@ product task.
 11. Re-run installer plan mode. Explain any remaining conflicts as intentional
     repository adaptations.
 12. Report created and merged files, detected commands, validation results, and
-    limitations. Stop without selecting a backlog task or invoking the cycle
-    skill.
+    limitations.
+13. Read `../generate-backlog/SKILL.md` relative to this skill directory and
+    follow its audit, validation, preview, and confirmation workflow. This is a
+    required part of initialization, not a suggestion-only handoff. Never treat
+    the user's approval to initialize as approval to write the proposed tasks.
+14. After the user confirms, revises, or cancels the proposal, report the
+    outcome and suggest `$webapp-harness:generate-backlog` for future gap
+    audits. Stop without selecting a task or invoking the cycle skill.
 
 ## Safety boundaries
 
@@ -71,6 +77,8 @@ product task.
   `.harness`, `scripts`, or `tests` tree wholesale.
 - Do not run `select_next_task.py`.
 - Do not implement product work.
+- Do not append generated backlog tasks without the separate confirmation
+  required by the generate-backlog skill.
 - Do not commit unless the user explicitly requests it.
 - Do not claim browser tooling is configured until it is exercised in the
   target application.

@@ -26,6 +26,8 @@ uv run pytest
 uv run python "$CODEX_SYSTEM_SKILLS/skill-creator/scripts/quick_validate.py" \
   plugins/webapp-harness/skills/initialize-harness
 uv run python "$CODEX_SYSTEM_SKILLS/skill-creator/scripts/quick_validate.py" \
+  plugins/webapp-harness/skills/generate-backlog
+uv run python "$CODEX_SYSTEM_SKILLS/skill-creator/scripts/quick_validate.py" \
   plugins/webapp-harness/skills/orchestrate-development-cycle
 uv run python "$CODEX_SYSTEM_SKILLS/plugin-creator/scripts/validate_plugin.py" \
   plugins/webapp-harness

@@ -3,6 +3,9 @@
 - Use `uv` for the harness Python environment; do not add a harness
   requirements file.
 - Validate `.harness` state before selecting or resuming a task.
+- Generate backlog tasks only from concrete gap evidence, preview the complete
+  proposal, and require explicit user confirmation before appending it.
+- Keep generated tasks `proposed` until the user explicitly promotes them.
 - Run exactly one backlog task per development-cycle invocation.
 - Deterministic scripts own task selection and lifecycle transitions; agents
   must not edit lifecycle fields directly.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Initialize Harness"
-  short_description: "Install and adapt the harness safely"
-  default_prompt: "Use $webapp-harness:initialize-harness to initialize this repository."
+  short_description: "Install, adapt, and propose the first backlog"
+  default_prompt: "Use $webapp-harness:initialize-harness to initialize this repository and preview an evidence-backed backlog for my confirmation."

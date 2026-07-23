@@ -1,0 +1,4 @@
+interface:
+  display_name: "Generate Backlog"
+  short_description: "Audit gaps and propose confirmed tasks"
+  default_prompt: "Use $webapp-harness:generate-backlog to audit this repository and propose an evidence-backed backlog for my confirmation."

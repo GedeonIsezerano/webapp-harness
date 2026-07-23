@@ -1,7 +1,7 @@
 {
   "name": "webapp-harness",
-  "version": "0.0.1",
-  "description": "Install and operate a deterministic sequential web-application development harness.",
+  "version": "0.0.2",
+  "description": "Install and operate a deterministic sequential web-application development harness with evidence-backed backlog generation.",
   "author": {
     "name": "Gedeon Isezerano"
   },
@@ -14,18 +14,20 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Webapp Harness",
-    "shortDescription": "Initialize and run verified development cycles.",
-    "longDescription": "Install a repository-native harness, then run one deterministic implementation, verification, browser-validation, review, and commit cycle at a time.",
+    "shortDescription": "Generate backlogs and run verified development cycles.",
+    "longDescription": "Install a repository-native harness, audit evidence-backed gaps into a user-confirmed backlog, then run one deterministic implementation, verification, browser-validation, review, and commit cycle at a time.",
     "developerName": "Gedeon Isezerano",
     "category": "Productivity",
     "capabilities": [
       "Repository setup",
+      "Evidence-backed backlog generation",
       "Sequential development",
       "Browser validation",
       "Independent review"
     ],
     "defaultPrompt": [
-      "Initialize the development harness in this repository.",
+      "Initialize the development harness and preview its first evidence-backed backlog.",
+      "Audit this repository for gaps and propose backlog tasks for my confirmation.",
       "Run exactly one verified development cycle."
     ]
   }
