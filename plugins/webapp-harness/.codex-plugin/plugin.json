@@ -1,0 +1,32 @@
+{
+  "name": "webapp-harness",
+  "version": "0.0.1",
+  "description": "Install and operate a deterministic sequential web-application development harness.",
+  "author": {
+    "name": "Gedeon Isezerano"
+  },
+  "keywords": [
+    "development",
+    "orchestration",
+    "testing",
+    "browser-validation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Webapp Harness",
+    "shortDescription": "Initialize and run verified development cycles.",
+    "longDescription": "Install a repository-native harness, then run one deterministic implementation, verification, browser-validation, review, and commit cycle at a time.",
+    "developerName": "Gedeon Isezerano",
+    "category": "Productivity",
+    "capabilities": [
+      "Repository setup",
+      "Sequential development",
+      "Browser validation",
+      "Independent review"
+    ],
+    "defaultPrompt": [
+      "Initialize the development harness in this repository.",
+      "Run exactly one verified development cycle."
+    ]
+  }
+}

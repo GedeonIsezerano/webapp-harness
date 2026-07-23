@@ -1,0 +1,4 @@
+interface:
+  display_name: "Initialize Harness"
+  short_description: "Install and adapt the harness safely"
+  default_prompt: "Use $webapp-harness:initialize-harness to initialize this repository."

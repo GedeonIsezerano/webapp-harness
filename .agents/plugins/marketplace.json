@@ -1,0 +1,20 @@
+{
+  "name": "webapp-harness",
+  "interface": {
+    "displayName": "Webapp Harness"
+  },
+  "plugins": [
+    {
+      "name": "webapp-harness",
+      "source": {
+        "source": "local",
+        "path": "./plugins/webapp-harness"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

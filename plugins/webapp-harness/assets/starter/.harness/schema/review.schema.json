@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "task_id",
+    "run_id",
+    "verdict",
+    "findings"
+  ],
+  "properties": {
+    "task_id": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "APPROVED",
+        "CHANGES_REQUIRED"
+      ]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "severity",
+          "location",
+          "failure_mode",
+          "recommendation"
+        ],
+        "properties": {
+          "severity": {
+            "enum": [
+              "blocking",
+              "major",
+              "minor"
+            ]
+          },
+          "criterion_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "type": "string"
+          },
+          "failure_mode": {
+            "type": "string"
+          },
+          "recommendation": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

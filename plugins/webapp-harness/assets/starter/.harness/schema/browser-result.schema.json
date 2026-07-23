@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "task_id",
+    "run_id",
+    "status",
+    "tooling",
+    "criteria"
+  ],
+  "properties": {
+    "task_id": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "PASSED",
+        "FAILED",
+        "INCOMPLETE"
+      ]
+    },
+    "tooling": {
+      "type": "object",
+      "required": [
+        "browser_use",
+        "chrome_extension"
+      ],
+      "properties": {
+        "browser_use": {
+          "type": "boolean"
+        },
+        "chrome_extension": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "criterion_id",
+          "result",
+          "steps",
+          "observed",
+          "expected",
+          "url",
+          "console_errors",
+          "network_errors"
+        ],
+        "properties": {
+          "criterion_id": {
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              "NOT_VERIFIED"
+            ]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "observed": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "console_errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "network_errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
