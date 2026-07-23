@@ -68,7 +68,9 @@ uv run python -B scripts/harness/update_task_state.py <task-id> ready \
    ```
 
 10. Invoke `$webapp-harness:orchestrate-development-cycle` from a fresh Codex
-   thread to process exactly one task.
+    thread. By default it processes ready tasks sequentially until the backlog
+    is complete or a real blocker is reached. Ask for “only one task” when a
+    single-task invocation is desired.
 
 ## Gap-based backlog generation
 
@@ -94,3 +96,15 @@ tasks not in `proposed` status. It appends tasks without replacing existing
 backlog entries.
 
 Completed task commits use `<TASK-ID>: <title>` with task, run, acceptance-criterion, and evidence metadata in the body. The created commit hash is recorded afterward in mutable run/state metadata.
+
+## Sequential backlog progress
+
+`scripts/harness/backlog_status.py` reports whether the next action is to
+resume an active task, select another ready task, stop because the backlog is
+complete or empty, wait for proposed-task approval, or report a blocked
+dependency chain. The development-cycle skill runs this command before
+selection and after every task commit.
+
+The harness keeps one active task at a time and creates one commit per completed
+task. An unbounded invocation can therefore create multiple sequential commits.
+Use an explicit one-task or maximum-count request to bound an invocation.

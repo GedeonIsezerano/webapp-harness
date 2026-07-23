@@ -3,6 +3,7 @@ from pathlib import Path
 from lifecycle import can_transition
 from validate_state import validate
 from select_next_task import select
+from backlog_status import backlog_status
 from update_task_state import transition
 from verify_task import verify
 from create_task_commit import assert_task_scope
@@ -30,6 +31,12 @@ def test_deterministic_selection(tmp_path):
     r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('Z-002',priority=10),task('A-001',priority=10),task('B-001',priority=5)]}); assert select(r)['task_id']=='A-001'
 def test_dependency_blocks_selection(tmp_path):
     r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001',deps=['B-001']),task('B-001')]}); assert select(r)['task_id']=='B-001'
+def test_explicit_task_selection_preserves_sequential_eligibility(tmp_path):
+    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001'),task('B-001',priority=10)]}); assert select(r,'A-001')['task_id']=='A-001'
+def test_explicit_task_selection_rejects_dependency_stalled_task(tmp_path):
+    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001',deps=['B-001']),task('B-001')]})
+    try: select(r,'A-001'); assert False, 'expected eligibility failure'
+    except ValueError as exc: assert 'not eligible' in str(exc)
 def test_duplicate_ids_fail(tmp_path):
     r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001'),task('A-001')]}); assert any('unique' in e for e in validate(r))
 def test_cycle_fails(tmp_path):
@@ -109,6 +116,24 @@ def test_backlog_proposal_requires_executable_verification_profile(tmp_path):
     write_json(proposal,{'schema_version':1,'tasks':[proposed]})
     try: preview_proposal(r,proposal); assert False, 'expected proposal failure'
     except ValueError as exc: assert 'at least one verification profile' in str(exc)
+
+def test_backlog_status_orders_eligible_tasks_and_reports_stalls(tmp_path):
+    r=fixture(tmp_path)
+    tasks=[task('LOW-001',priority=1),task('HIGH-002',priority=10),task('HIGH-001',priority=10),task('WAIT-001',deps=['BLOCK-001']),task('BLOCK-001',status='blocked'),task('IDEA-001',status='proposed')]
+    write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':tasks})
+    status=backlog_status(r)
+    assert status['next_action']=='select_next'
+    assert status['eligible_task_ids']==['HIGH-001','HIGH-002','LOW-001']
+    assert status['unresolved']=={'proposed':['IDEA-001'],'blocked':['BLOCK-001'],'dependency_stalled':['WAIT-001']}
+
+def test_backlog_status_distinguishes_complete_empty_and_awaiting_approval(tmp_path):
+    r=fixture(tmp_path)
+    assert backlog_status(r)['next_action']=='empty'
+    write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('DONE-001',status='completed')]})
+    complete=backlog_status(r)
+    assert complete['complete'] is True and complete['next_action']=='complete'
+    write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('IDEA-001',status='proposed')]})
+    assert backlog_status(r)['next_action']=='awaiting_approval'
 
 def test_schema_files_valid_json():
     for p in (Path(__file__).parents[2]/'.harness/schema').glob('*.json'): json.loads(p.read_text())

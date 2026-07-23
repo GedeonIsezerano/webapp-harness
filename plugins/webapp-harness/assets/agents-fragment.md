@@ -6,11 +6,13 @@
 - Generate backlog tasks only from concrete gap evidence, preview the complete
   proposal, and require explicit user confirmation before appending it.
 - Keep generated tasks `proposed` until the user explicitly promotes them.
-- Run exactly one backlog task per development-cycle invocation.
+- Run ready backlog tasks sequentially until completion by default. Honor an
+  explicit one-task, bounded-count, or task-selection request.
 - Deterministic scripts own task selection and lifecycle transitions; agents
   must not edit lifecycle fields directly.
 - Respect each task's allowed and forbidden path scope.
 - Completion requires passed command verification, direct rendered-app browser
   evidence when required, and fresh independent review approval.
-- Create exactly one task-referenced commit after successful completion, record
-  the resulting hash, and stop without starting another task.
+- Create exactly one task-referenced commit after each successful task,
+  record the resulting hash, and re-check deterministic backlog status before
+  selecting the next task.

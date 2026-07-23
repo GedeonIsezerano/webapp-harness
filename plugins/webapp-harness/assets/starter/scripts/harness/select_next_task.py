@@ -6,7 +6,7 @@ from common import read_json, atomic_write_json, task_map, utc_now
 from validate_state import validate
 from update_task_state import transition
 
-def select(root: Path) -> dict:
+def select(root: Path, task_id: str | None = None) -> dict:
     errors=validate(root)
     if errors: raise ValueError('Harness state invalid:\n'+'\n'.join(errors))
     h=root/'.harness'; backlog=read_json(h/'backlog.json'); state=read_json(h/'state.json')
@@ -14,7 +14,13 @@ def select(root: Path) -> dict:
     tasks=task_map(backlog)
     eligible=[t for t in tasks.values() if t['status']=='ready' and all(tasks[d]['status']=='completed' for d in t.get('dependencies',[]))]
     if not eligible: raise ValueError('No eligible ready task')
-    chosen=sorted(eligible,key=lambda t:(-t.get('priority',0),t['id']))[0]
+    if task_id:
+        if task_id not in tasks: raise ValueError(f'Unknown task: {task_id}')
+        chosen=tasks[task_id]
+        if chosen not in eligible:
+            raise ValueError(f'Task is not eligible and ready: {task_id}')
+    else:
+        chosen=sorted(eligible,key=lambda t:(-t.get('priority',0),t['id']))[0]
     run_id=f"{chosen['id']}-{utc_now().replace(':','').replace('-','')}"
     run_dir=h/'runs'/run_id; run_dir.mkdir(parents=True,exist_ok=False)
     run={'schema_version':1,'run_id':run_id,'task_id':chosen['id'],'attempt':1,'status':'implementing','started_at':utc_now(),'base_commit':None,'transitions':[],'implementation':{},'verification':{},'browser_validation':{},'review':{},'result_commit':None,'stop_reason':None}
@@ -25,7 +31,7 @@ def select(root: Path) -> dict:
     return {'task_id':chosen['id'],'run_id':run_id,'title':chosen['title']}
 
 def main():
-    p=argparse.ArgumentParser(); p.add_argument('--root',default='.'); a=p.parse_args()
-    try: print(json.dumps(select(Path(a.root)),indent=2))
+    p=argparse.ArgumentParser(); p.add_argument('--root',default='.'); p.add_argument('--task-id'); a=p.parse_args()
+    try: print(json.dumps(select(Path(a.root),a.task_id),indent=2))
     except ValueError as e: print(f'ERROR: {e}',file=sys.stderr); raise SystemExit(1)
 if __name__=='__main__': main()

@@ -67,6 +67,12 @@ the proposal, shows every task and its evidence, and will not mutate the
 backlog until you confirm the exact preview. Promote accepted tasks to `ready`
 before running a development cycle.
 
+`$webapp-harness:orchestrate-development-cycle` processes ready tasks
+sequentially until the backlog is complete or it reaches a real blocker. Every
+task retains its own implementation, verification, browser-validation, review,
+and commit boundary. Ask it to run “only one task,” “up to N tasks,” or a
+specific eligible task when you want a bounded invocation.
+
 Commit the initialized baseline and return the target repository to a clean
 state before running the first development cycle.
 

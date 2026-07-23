@@ -1,4 +1,4 @@
 interface:
-  display_name: "Run Development Cycle"
-  short_description: "Run exactly one verified task cycle"
-  default_prompt: "Use $webapp-harness:orchestrate-development-cycle to run one task cycle."
+  display_name: "Run Backlog Cycle"
+  short_description: "Run verified tasks sequentially to completion"
+  default_prompt: "Use $webapp-harness:orchestrate-development-cycle to run the ready backlog sequentially until it is complete."
