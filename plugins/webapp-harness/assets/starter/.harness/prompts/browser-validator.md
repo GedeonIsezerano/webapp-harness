@@ -19,10 +19,13 @@ Resolve the active task and run from:
 Read every browser, visual, and E2E acceptance criterion. Inspect
 `.harness/schema/browser-result.schema.json` before returning.
 
-Use the installed Browser or Chrome control skill appropriate to the available
-session and read its `SKILL.md` fully before operating it. Use configured
-application start commands and URLs from `.harness/config.json`; do not invent
-an unconfigured environment.
+Use the best available browser-control surface. Prefer, in order:
+
+1. An installed Browser or Chrome control skill.
+2. `computer_use` MCP tools.
+
+Use configured application start commands and URLs from `.harness/config.json`;
+do not invent an unconfigured environment.
 
 ## Validate
 

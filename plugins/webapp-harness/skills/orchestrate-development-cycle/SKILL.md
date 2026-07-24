@@ -117,13 +117,14 @@ Never treat zero executed checks as passed.
 When the task requires browser or visual verification, spawn a fresh,
 independent browser validator. Direct it to read
 `.harness/prompts/browser-validator.md`, the active task/run assets, and the
-installed Browser or Chrome control skill appropriate to the session. Require
-direct interaction with the rendered application and structured evidence for
-every browser criterion.
+best available browser-control surface for the session. Require direct
+interaction with the rendered application and structured evidence for every
+browser criterion.
 
-Use Browser or Chrome tooling actually available in the session. Unavailable
-tooling, unobserved criteria, stale console output, or test output without
-rendered-app observation means `INCOMPLETE`, not passed.
+Prefer, in order: (1) an installed Browser or Chrome control skill,
+(2) `computer_use` MCP tools. Use whichever is actually available in the
+session. Unavailable tooling, unobserved criteria, stale console output, or
+test output without rendered-app observation means `INCOMPLETE`, not passed.
 
 Record the result:
 

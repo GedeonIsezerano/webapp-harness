@@ -1,6 +1,6 @@
 [project]
 name = "webapp-harness-plugin"
-version = "0.0.3"
+version = "0.0.4"
 description = "Development and validation tooling for the Webapp Harness plugin"
 requires-python = ">=3.11"
 dependencies = []
