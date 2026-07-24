@@ -33,3 +33,13 @@ def task_map(backlog: dict) -> dict[str, dict]:
 
 def active_tasks(backlog: dict) -> list[dict]:
     return [t for t in backlog.get('tasks', []) if t.get('status') in {'implementing','verifying','reviewing'}]
+
+# Lower priority values run first; 1 is the highest priority. Tasks without a
+# usable priority sort after every prioritized task.
+UNSET_PRIORITY = 1 << 30
+
+def priority_sort_key(task: dict) -> tuple[int, str]:
+    priority = task.get('priority')
+    if not isinstance(priority, int):
+        priority = UNSET_PRIORITY
+    return (priority, task['id'])

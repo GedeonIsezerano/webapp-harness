@@ -114,17 +114,24 @@ Never treat zero executed checks as passed.
 
 ## Browser validation
 
-When the task requires browser or visual verification, spawn a fresh,
-independent browser validator. Direct it to read
-`.harness/prompts/browser-validator.md`, the active task/run assets, and the
-best available browser-control surface for the session. Require direct
-interaction with the rendered application and structured evidence for every
-browser criterion.
+When the task requires browser or visual verification, first ensure the
+application is healthy at the `app.health_url` from `.harness/config.json`;
+when it is not responding and `app.start_command` is configured, start it and
+wait for health. Then spawn a fresh, independent browser validator. Direct it
+to read `.harness/prompts/browser-validator.md` and the active task/run
+assets, and drive the rendered application through the tooling cascade:
+(1) an installed `browser_use` skill, (2) an installed Chrome control surface
+(Chrome DevTools MCP or Chrome extension skill), (3) `computer_use` MCP
+tools, (4) Playwright. Use the first surface actually available in the
+session. Require direct interaction with the rendered application, structured
+evidence for every browser criterion, and at least one screenshot per
+criterion saved under `.harness/runs/<active-run-id>/evidence/` and
+referenced in the recorded result.
 
-Prefer, in order: (1) an installed Browser or Chrome control skill,
-(2) `computer_use` MCP tools. Use whichever is actually available in the
-session. Unavailable tooling, unobserved criteria, stale console output, or
-test output without rendered-app observation means `INCOMPLETE`, not passed.
+Unavailable tooling, unobserved criteria, stale console output, or test
+output without rendered-app observation means `INCOMPLETE`, not passed. The
+transition to `reviewing` is rejected deterministically while the active
+task's `requires_browser` is true and no passed browser result is recorded.
 
 Record the result:
 

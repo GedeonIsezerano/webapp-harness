@@ -47,6 +47,9 @@ backlog without implementing or selecting a product task.
    commands, lint, typecheck, unit, integration, build, and E2E commands.
    Populate `.harness/config.json` only with commands that exist and work.
    Use the verification-profile structure documented in `docs/harness.md`.
+   Populate the optional `app` section (`start_command`, `health_url`,
+   `notes`) whenever the repository has a discoverable dev server; browser
+   validation depends on it and reports `INCOMPLETE` without it.
    Omit commands that fail discovery checks and report why they were omitted.
 9. Configure allowed dirty paths narrowly. Preserve existing Git hooks and
    repository policies.

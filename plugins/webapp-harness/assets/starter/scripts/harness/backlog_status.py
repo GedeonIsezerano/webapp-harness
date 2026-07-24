@@ -7,7 +7,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from common import read_json, task_map
+from common import read_json, task_map, priority_sort_key
 from validate_state import validate
 
 
@@ -29,7 +29,7 @@ def backlog_status(root: Path) -> dict:
             if task["status"] == "ready"
             and all(tasks[dependency]["status"] == "completed" for dependency in task.get("dependencies", []))
         ),
-        key=lambda task: (-task.get("priority", 0), task["id"]),
+        key=priority_sort_key,
     )
     dependency_stalled = sorted(
         task["id"]

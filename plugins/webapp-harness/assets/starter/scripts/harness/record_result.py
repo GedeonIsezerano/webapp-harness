@@ -14,6 +14,13 @@ def record(root:Path,kind:str,input_path:Path):
     run_path=h/'runs'/rid/'run.json'; run=read_json(run_path)
     if data.get('task_id')!=run['task_id'] or data.get('run_id')!=rid: raise ValueError('Result does not belong to active task/run')
     if kind=='review' and data['verdict']=='APPROVED' and any(f['severity']=='blocking' for f in data.get('findings',[])): raise ValueError('APPROVED review cannot contain blocking findings')
+    if kind=='browser-result':
+        run_dir=(h/'runs'/rid).resolve()
+        for criterion in data.get('criteria',[]):
+            for rel in criterion.get('screenshots',[]):
+                target=(root/rel).resolve()
+                if run_dir not in target.parents: raise ValueError(f'Screenshot must live under the active run directory: {rel}')
+                if not target.is_file(): raise ValueError(f'Missing screenshot file: {rel}')
     key={'verification':'verification','browser-result':'browser_validation','review':'review','implementation-result':'implementation'}[kind]
     run[key]=data; atomic_write_json(run_path,run); atomic_write_json(h/'runs'/rid/f'{kind}.json',data)
 

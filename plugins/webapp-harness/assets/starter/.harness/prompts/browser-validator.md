@@ -19,13 +19,28 @@ Resolve the active task and run from:
 Read every browser, visual, and E2E acceptance criterion. Inspect
 `.harness/schema/browser-result.schema.json` before returning.
 
-Use the best available browser-control surface. Prefer, in order:
+## Tooling cascade
 
-1. An installed Browser or Chrome control skill.
-2. `computer_use` MCP tools.
+Drive the rendered application with the first surface in this order that is
+actually available in the session:
 
-Use configured application start commands and URLs from `.harness/config.json`;
-do not invent an unconfigured environment.
+1. An installed `browser_use` skill.
+2. An installed Chrome control surface (Chrome DevTools MCP or Chrome
+   extension skill).
+3. `computer_use` MCP tools.
+4. Playwright (the repository's own E2E setup or `npx playwright`).
+
+Read the chosen surface's `SKILL.md` or documentation fully before operating
+it. Record the chosen surface in `tooling.surface` and any version, profile,
+or setup detail in `tooling.detail`. Do not build a bespoke one-off driver
+while a listed surface is available.
+
+## Application environment
+
+Start and health-check the application only with the `app` section of
+`.harness/config.json` (`start_command`, `health_url`, `notes`). If `app` is
+not configured or the application does not become healthy, report
+`INCOMPLETE`; do not invent an unconfigured environment.
 
 ## Validate
 
@@ -34,6 +49,11 @@ do not invent an unconfigured environment.
   states when the criterion requires them.
 - Capture exact steps, URL, observed result, expected result, console errors,
   network errors, and evidence references.
+- Save at least one screenshot per criterion under
+  `.harness/runs/<active-run-id>/evidence/` with the browser surface during
+  the run, and reference each repository-relative path in the criterion's
+  `screenshots` array. Recording refuses screenshots that are missing on disk
+  or outside the active run directory.
 - Use fresh page state and fresh console/network observations for final
   evidence.
 - Test output, source inspection, or screenshots without interaction do not

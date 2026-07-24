@@ -53,6 +53,28 @@
     "verification_profiles": {
       "type": "object"
     },
+    "app": {
+      "type": "object",
+      "description": "How to run and health-check the application under test. Browser validation depends on it.",
+      "properties": {
+        "start_command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Argument array that starts the dev server, e.g. [\"npm\", \"run\", \"dev\"]."
+        },
+        "health_url": {
+          "type": "string",
+          "description": "URL that responds when the app is up, e.g. http://localhost:3000."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Environment, ports, or test-account notes validators need."
+        }
+      },
+      "additionalProperties": false
+    },
     "commit": {
       "type": "object",
       "required": [

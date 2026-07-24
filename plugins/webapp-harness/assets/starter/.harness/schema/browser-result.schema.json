@@ -24,16 +24,23 @@
     },
     "tooling": {
       "type": "object",
+      "description": "The browser-control surface actually used, from the cascade: browser_use skill, Chrome control (DevTools MCP or extension), computer_use MCP, or Playwright.",
       "required": [
-        "browser_use",
-        "chrome_extension"
+        "surface"
       ],
       "properties": {
-        "browser_use": {
-          "type": "boolean"
+        "surface": {
+          "enum": [
+            "browser_use",
+            "chrome_control",
+            "computer_use",
+            "playwright",
+            "other"
+          ]
         },
-        "chrome_extension": {
-          "type": "boolean"
+        "detail": {
+          "type": "string",
+          "description": "Version, profile, or setup detail for the chosen surface."
         }
       },
       "additionalProperties": false
@@ -50,7 +57,8 @@
           "expected",
           "url",
           "console_errors",
-          "network_errors"
+          "network_errors",
+          "screenshots"
         ],
         "properties": {
           "criterion_id": {
@@ -90,6 +98,15 @@
             "items": {
               "type": "string"
             }
+          },
+          "screenshots": {
+            "type": "array",
+            "description": "Repository-relative paths of screenshots captured during this criterion, saved under .harness/runs/<run-id>/evidence/. At least one is required.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
           },
           "evidence": {
             "type": "array",

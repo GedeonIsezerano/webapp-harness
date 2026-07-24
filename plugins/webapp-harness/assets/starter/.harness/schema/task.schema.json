@@ -60,7 +60,8 @@
       ]
     },
     "priority": {
-      "type": "integer"
+      "type": "integer",
+      "description": "Lower values run first; 1 is the highest priority."
     },
     "dependencies": {
       "type": "array",
