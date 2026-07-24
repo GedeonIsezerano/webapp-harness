@@ -79,6 +79,53 @@ or migration check:
 }
 ```
 
+## Application config for browser validation
+
+The optional `app` section tells browser validators how to run and
+health-check the application under test:
+
+```json
+{
+  "app": {
+    "start_command": ["npm", "run", "dev"],
+    "health_url": "http://localhost:3000",
+    "notes": "Use the seeded staff account; onboarding requires an account with no business."
+  }
+}
+```
+
+The development-cycle orchestrator starts the app with `start_command` when
+`health_url` is not responding, and validators report `INCOMPLETE` instead of
+inventing an environment when `app` is missing or unhealthy.
+
+## Browser validation evidence
+
+Tasks with `verification.requires_browser: true` must collect structured
+browser evidence before review. Recording a browser result requires at least
+one screenshot per criterion, saved under `.harness/runs/<run-id>/evidence/`
+and referenced in the result; `record_result.py` rejects results whose
+screenshots are missing on disk or outside the active run directory.
+`update_task_state.py` rejects the transition to `reviewing` while the active
+task requires browser validation and no passed browser result is recorded.
+
+Validators drive the rendered application through a tooling cascade, using the
+first surface actually available: an installed `browser_use` skill, an
+installed Chrome control surface (Chrome DevTools MCP or Chrome extension
+skill), `computer_use` MCP tools, then Playwright. The chosen surface is
+recorded in `tooling.surface`.
+
+## Task priority
+
+Lower priority values run first; 1 is the highest priority. Selection and
+status reporting sort eligible tasks by `(priority, id)`. Reorder the backlog
+deterministically instead of editing `backlog.json` by hand:
+
+```bash
+uv run python -B scripts/harness/reprioritize.py <task-id> [<task-id> ...]
+```
+
+The first ID receives priority 1, the second priority 2, and so on.
+
 ## New-repository setup
 
 1. Copy or merge the harness files into the target repository root.

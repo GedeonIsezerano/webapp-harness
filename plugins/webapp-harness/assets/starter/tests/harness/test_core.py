@@ -8,6 +8,9 @@ from update_task_state import transition
 from verify_task import verify
 from create_task_commit import assert_task_scope
 from merge_backlog_proposal import apply as apply_proposal, preview as preview_proposal
+from record_result import record
+from reprioritize import reprioritize
+from common import priority_sort_key
 from conftest import write_json
 
 def fixture(tmp_path):
@@ -28,7 +31,10 @@ def proposed_task(i='GAP-001',deps=None):
 
 def test_lifecycle(): assert can_transition('ready','implementing') and not can_transition('ready','completed')
 def test_deterministic_selection(tmp_path):
-    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('Z-002',priority=10),task('A-001',priority=10),task('B-001',priority=5)]}); assert select(r)['task_id']=='A-001'
+    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('Z-001',priority=1),task('A-001',priority=1),task('B-001',priority=5)]}); assert select(r)['task_id']=='A-001'
+def test_priority_sort_key_orders_low_values_first():
+    assert priority_sort_key({'id':'A-002','priority':1})<priority_sort_key({'id':'A-001','priority':2})
+    assert priority_sort_key({'id':'A-001'})>priority_sort_key({'id':'Z-099','priority':999})
 def test_dependency_blocks_selection(tmp_path):
     r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001',deps=['B-001']),task('B-001')]}); assert select(r)['task_id']=='B-001'
 def test_explicit_task_selection_preserves_sequential_eligibility(tmp_path):
@@ -119,7 +125,7 @@ def test_backlog_proposal_requires_executable_verification_profile(tmp_path):
 
 def test_backlog_status_orders_eligible_tasks_and_reports_stalls(tmp_path):
     r=fixture(tmp_path)
-    tasks=[task('LOW-001',priority=1),task('HIGH-002',priority=10),task('HIGH-001',priority=10),task('WAIT-001',deps=['BLOCK-001']),task('BLOCK-001',status='blocked'),task('IDEA-001',status='proposed')]
+    tasks=[task('LOW-001',priority=10),task('HIGH-002',priority=1),task('HIGH-001',priority=1),task('WAIT-001',deps=['BLOCK-001']),task('BLOCK-001',status='blocked'),task('IDEA-001',status='proposed')]
     write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':tasks})
     status=backlog_status(r)
     assert status['next_action']=='select_next'
@@ -137,3 +143,52 @@ def test_backlog_status_distinguishes_complete_empty_and_awaiting_approval(tmp_p
 
 def test_schema_files_valid_json():
     for p in (Path(__file__).parents[2]/'.harness/schema').glob('*.json'): json.loads(p.read_text())
+
+def browser_task(status='ready'):
+    t=task('A-001',status=status); t['verification']['requires_browser']=True; return t
+
+def browser_result(rid,criterion='AC-1',screenshots=None):
+    return {'task_id':'A-001','run_id':rid,'status':'PASSED','tooling':{'surface':'playwright'},'criteria':[{'criterion_id':criterion,'result':'PASS','steps':['step'],'observed':'o','expected':'e','url':'http://localhost','console_errors':[],'network_errors':[],'screenshots':screenshots or []}]}
+
+def test_reviewing_requires_passed_browser_validation_when_required(tmp_path):
+    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[browser_task()]})
+    selected=select(r); transition(r,'A-001','verifying','implemented')
+    try: transition(r,'A-001','reviewing','verified'); assert False, 'expected browser gate'
+    except ValueError as exc: assert 'browser validation' in str(exc)
+    run_path=r/'.harness/runs'/selected['run_id']/'run.json'; run=json.loads(run_path.read_text())
+    run['browser_validation']={'status':'PASSED'}; write_json(run_path,run)
+    transition(r,'A-001','reviewing','verified')
+    assert json.loads((r/'.harness/backlog.json').read_text())['tasks'][0]['status']=='reviewing'
+
+def test_reviewing_skips_browser_gate_when_not_required(tmp_path):
+    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001')]})
+    select(r); transition(r,'A-001','verifying','implemented'); transition(r,'A-001','reviewing','verified')
+    assert json.loads((r/'.harness/backlog.json').read_text())['tasks'][0]['status']=='reviewing'
+
+def test_record_browser_result_requires_screenshot_files(tmp_path):
+    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[browser_task()]})
+    selected=select(r); rid=selected['run_id']; evidence_dir=r/'.harness/runs'/rid/'evidence'; evidence_dir.mkdir(parents=True)
+    shot=f'.harness/runs/{rid}/evidence/ac1.png'
+    input_path=r/'browser.json'; write_json(input_path,browser_result(rid,screenshots=[shot]))
+    try: record(r,'browser-result',input_path); assert False, 'expected missing screenshot failure'
+    except ValueError as exc: assert 'Missing screenshot file' in str(exc)
+    (evidence_dir/'ac1.png').write_bytes(b'png')
+    record(r,'browser-result',input_path)
+    recorded=json.loads((r/'.harness/runs'/rid/'browser-result.json').read_text())
+    assert recorded['criteria'][0]['screenshots']==[shot]
+
+def test_record_browser_result_rejects_screenshots_outside_run(tmp_path):
+    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[browser_task()]})
+    selected=select(r); (r/'outside.png').write_bytes(b'png')
+    input_path=r/'browser.json'; write_json(input_path,browser_result(selected['run_id'],screenshots=['outside.png']))
+    try: record(r,'browser-result',input_path); assert False, 'expected location failure'
+    except ValueError as exc: assert 'under the active run directory' in str(exc)
+
+def test_reprioritize_assigns_order_and_rejects_unknown_ids(tmp_path):
+    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001',priority=7),task('B-001',priority=3)]})
+    assert reprioritize(r,['B-001','A-001'])=={'B-001':1,'A-001':2}
+    assert [t['priority'] for t in json.loads((r/'.harness/backlog.json').read_text())['tasks']]==[2,1]
+    try: reprioritize(r,['NOPE-1']); assert False, 'expected unknown id failure'
+    except ValueError as exc: assert 'Unknown task IDs' in str(exc)
+    try: reprioritize(r,['A-001','A-001']); assert False, 'expected duplicate failure'
+    except ValueError as exc: assert 'Duplicate task IDs' in str(exc)

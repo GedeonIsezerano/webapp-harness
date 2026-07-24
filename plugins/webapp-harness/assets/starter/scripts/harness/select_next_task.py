@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
-from common import read_json, atomic_write_json, task_map, utc_now
+from common import read_json, atomic_write_json, task_map, utc_now, priority_sort_key
 from validate_state import validate
 from update_task_state import transition
 
@@ -20,7 +20,7 @@ def select(root: Path, task_id: str | None = None) -> dict:
         if chosen not in eligible:
             raise ValueError(f'Task is not eligible and ready: {task_id}')
     else:
-        chosen=sorted(eligible,key=lambda t:(-t.get('priority',0),t['id']))[0]
+        chosen=sorted(eligible,key=priority_sort_key)[0]
     run_id=f"{chosen['id']}-{utc_now().replace(':','').replace('-','')}"
     run_dir=h/'runs'/run_id; run_dir.mkdir(parents=True,exist_ok=False)
     run={'schema_version':1,'run_id':run_id,'task_id':chosen['id'],'attempt':1,'status':'implementing','started_at':utc_now(),'base_commit':None,'transitions':[],'implementation':{},'verification':{},'browser_validation':{},'review':{},'result_commit':None,'stop_reason':None}

@@ -10,6 +10,11 @@ def transition(root: Path, task_id: str, target: str, reason: str) -> None:
     if task_id not in tasks: raise ValueError(f'Unknown task: {task_id}')
     task=tasks[task_id]; source=task['status']
     if not can_transition(source,target): raise ValueError(f'Illegal transition: {source} -> {target}')
+    if target=='reviewing' and task.get('verification',{}).get('requires_browser'):
+        run_id=state.get('active_run_id')
+        if not run_id: raise ValueError('Cannot enter review without active run')
+        if read_json(h/'runs'/run_id/'run.json').get('browser_validation',{}).get('status')!='PASSED':
+            raise ValueError('Cannot enter review without passed browser validation')
     if target=='completed':
         run_id=state.get('active_run_id')
         if not run_id: raise ValueError('Cannot complete without active run')
