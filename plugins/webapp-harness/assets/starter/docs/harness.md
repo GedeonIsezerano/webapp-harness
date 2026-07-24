@@ -47,6 +47,38 @@ initialization, include commands only after confirming that they exist and run
 in the real repository. A task with no executed command checks is incomplete,
 not passed.
 
+A Python backend repository would instead configure pytest plus an integration
+or migration check:
+
+```json
+{
+  "verification_profiles": {
+    "unit": [
+      {
+        "name": "Backend unit tests",
+        "command": ["pytest", "tests/unit", "-q"]
+      }
+    ],
+    "integration": [
+      {
+        "name": "Backend integration tests",
+        "command": ["pytest", "tests/integration", "-q"]
+      }
+    ],
+    "quality": [
+      {
+        "name": "Lint",
+        "command": ["ruff", "check", "."]
+      },
+      {
+        "name": "Typecheck",
+        "command": ["mypy", "src"]
+      }
+    ]
+  }
+}
+```
+
 ## New-repository setup
 
 1. Copy or merge the harness files into the target repository root.
@@ -67,8 +99,8 @@ uv run python -B scripts/harness/update_task_state.py <task-id> ready \
      --reason user_approved
    ```
 
-10. Invoke `$webapp-harness:orchestrate-development-cycle` from a fresh Codex
-    thread. By default it processes ready tasks sequentially until the backlog
+10. Invoke `$webapp-harness:orchestrate-development-cycle` from a fresh agent
+    session. By default it processes ready tasks sequentially until the backlog
     is complete or a real blocker is reached. Ask for “only one task” when a
     single-task invocation is desired.
 

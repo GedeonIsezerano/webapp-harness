@@ -1,6 +1,6 @@
 ---
 name: initialize-harness
-description: Initialize, upgrade, or repair the Codex sequential web-development harness in the current Git repository, then audit repository gaps and preview a proposed backlog for explicit user confirmation. Use when a repository does not yet contain `.harness`, when starter files must be merged safely with existing Python or agent configuration, or when an installed harness must be checked against this plugin without starting a product task.
+description: Initialize, upgrade, or repair the sequential web-development harness in the current Git repository, then audit repository gaps and preview a proposed backlog for explicit user confirmation. Use when a repository does not yet contain `.harness`, when starter files must be merged safely with existing Python or agent configuration, or when an installed harness must be checked against this plugin without starting a product task.
 ---
 
 # Initialize Harness

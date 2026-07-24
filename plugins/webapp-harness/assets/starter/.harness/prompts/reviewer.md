@@ -26,6 +26,9 @@ the changed technology, security boundary, or artifact. Read each selected
 skill fully before using it. Do not invoke
 `$webapp-harness:orchestrate-development-cycle` recursively.
 
+When the active task `type` is `backend`, also read
+`.harness/prompts/backend.md` and apply its review checklist.
+
 ## Review
 
 - Check every acceptance criterion against code and recorded evidence.

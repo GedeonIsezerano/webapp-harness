@@ -22,6 +22,10 @@ Use installed repository or plugin skills when they specifically match the
 task's technology or artifact. Read each selected skill fully before acting.
 Do not invoke `$webapp-harness:orchestrate-development-cycle` recursively.
 
+When the active task `type` is `backend`, also read
+`.harness/prompts/backend.md` before editing and apply its implementation
+checklist.
+
 Harness scripts under `scripts/harness/` own selection, lifecycle transitions,
 result recording, verification, and final commit creation. You may inspect
 those scripts to understand their contract, but do not edit lifecycle fields,
