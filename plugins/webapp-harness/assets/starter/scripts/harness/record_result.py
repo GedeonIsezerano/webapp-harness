@@ -5,6 +5,13 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 from common import read_json, atomic_write_json
 
+PASSING_BROWSER_SURFACES = frozenset({
+    'browser_use',
+    'chrome_control',
+    'computer_use',
+    'playwright',
+})
+
 def record(root:Path,kind:str,input_path:Path):
     h=root/'.harness'; state=read_json(h/'state.json'); rid=state.get('active_run_id')
     if not rid: raise ValueError('No active run')
@@ -15,6 +22,10 @@ def record(root:Path,kind:str,input_path:Path):
     if data.get('task_id')!=run['task_id'] or data.get('run_id')!=rid: raise ValueError('Result does not belong to active task/run')
     if kind=='review' and data['verdict']=='APPROVED' and any(f['severity']=='blocking' for f in data.get('findings',[])): raise ValueError('APPROVED review cannot contain blocking findings')
     if kind=='browser-result':
+        surface=data['tooling']['surface']
+        if data['status']=='PASSED' and surface not in PASSING_BROWSER_SURFACES:
+            allowed=', '.join(sorted(PASSING_BROWSER_SURFACES))
+            raise ValueError(f'PASSED browser result requires a supported control surface ({allowed}); got {surface}')
         run_dir=(h/'runs'/rid).resolve()
         for criterion in data.get('criteria',[]):
             for rel in criterion.get('screenshots',[]):

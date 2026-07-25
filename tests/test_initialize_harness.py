@@ -4,6 +4,7 @@ import importlib.util
 import json
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -52,6 +53,21 @@ def test_plugin_python_sources_compile_without_writing_bytecode() -> None:
     plugin_root = SCRIPT.parents[1]
     for source in plugin_root.rglob("*.py"):
         compile(source.read_text(encoding="utf-8"), str(source), "exec")
+
+
+def test_release_versions_are_synchronized() -> None:
+    repository_root = Path(__file__).parents[1]
+    plugin_root = SCRIPT.parents[1]
+    manifest_version = json.loads(
+        (plugin_root / ".codex-plugin/plugin.json").read_text()
+    )["version"]
+    qwen_version = json.loads(
+        (plugin_root / "qwen-extension.json").read_text()
+    )["version"]
+    project_version = tomllib.loads(
+        (repository_root / "pyproject.toml").read_text()
+    )["project"]["version"]
+    assert {manifest_version, qwen_version, project_version} == {"0.0.8"}
 
 
 def test_install_copies_starter_and_records_metadata(tmp_path: Path) -> None:

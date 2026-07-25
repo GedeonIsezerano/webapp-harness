@@ -132,6 +132,11 @@ evidence for every browser criterion, and at least one screenshot per
 criterion saved under `.harness/runs/<active-run-id>/evidence/` and
 referenced in the recorded result.
 
+Record the selected surface exactly as `browser_use`, `chrome_control`,
+`computer_use`, or `playwright`. All four canonical surfaces may produce a
+passing result. `other` may document a failed or incomplete attempt, but the
+deterministic recorder rejects it for a passing result.
+
 Unavailable tooling, unobserved criteria, stale console output, or test
 output without rendered-app observation means `INCOMPLETE`, not passed. The
 transition to `reviewing` is rejected deterministically while the active

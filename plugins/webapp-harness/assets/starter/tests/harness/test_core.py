@@ -1,5 +1,6 @@
 import json, shutil, subprocess
 from pathlib import Path
+import pytest
 from lifecycle import can_transition
 from validate_state import validate
 from select_next_task import select
@@ -204,8 +205,8 @@ def test_schema_files_valid_json():
 def browser_task(status='ready'):
     t=task('A-001',status=status); t['verification']['requires_browser']=True; return t
 
-def browser_result(rid,criterion='AC-1',screenshots=None):
-    return {'task_id':'A-001','run_id':rid,'status':'PASSED','tooling':{'surface':'playwright'},'criteria':[{'criterion_id':criterion,'result':'PASS','steps':['step'],'observed':'o','expected':'e','url':'http://localhost','console_errors':[],'network_errors':[],'screenshots':screenshots or []}]}
+def browser_result(rid,criterion='AC-1',screenshots=None,surface='playwright',status='PASSED'):
+    return {'task_id':'A-001','run_id':rid,'status':status,'tooling':{'surface':surface},'criteria':[{'criterion_id':criterion,'result':'PASS','steps':['step'],'observed':'o','expected':'e','url':'http://localhost','console_errors':[],'network_errors':[],'screenshots':screenshots or []}]}
 
 def test_reviewing_requires_passed_browser_validation_when_required(tmp_path):
     r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[browser_task()]})
@@ -240,6 +241,24 @@ def test_record_browser_result_rejects_screenshots_outside_run(tmp_path):
     input_path=r/'browser.json'; write_json(input_path,browser_result(selected['run_id'],screenshots=['outside.png']))
     try: record(r,'browser-result',input_path); assert False, 'expected location failure'
     except ValueError as exc: assert 'under the active run directory' in str(exc)
+
+@pytest.mark.parametrize('surface',['browser_use','chrome_control','computer_use','playwright'])
+def test_record_passed_browser_result_accepts_supported_control_surfaces(tmp_path,surface):
+    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[browser_task()]})
+    selected=select(r); rid=selected['run_id']; evidence_dir=r/'.harness/runs'/rid/'evidence'; evidence_dir.mkdir(parents=True)
+    shot=f'.harness/runs/{rid}/evidence/{surface}.png'; (evidence_dir/f'{surface}.png').write_bytes(b'png')
+    input_path=r/f'{surface}.json'; write_json(input_path,browser_result(rid,screenshots=[shot],surface=surface))
+    record(r,'browser-result',input_path)
+    recorded=json.loads((r/'.harness/runs'/rid/'browser-result.json').read_text())
+    assert recorded['status']=='PASSED' and recorded['tooling']['surface']==surface
+
+def test_record_passed_browser_result_rejects_other_surface(tmp_path):
+    r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[browser_task()]})
+    selected=select(r); rid=selected['run_id']; evidence_dir=r/'.harness/runs'/rid/'evidence'; evidence_dir.mkdir(parents=True)
+    shot=f'.harness/runs/{rid}/evidence/other.png'; (evidence_dir/'other.png').write_bytes(b'png')
+    input_path=r/'other.json'; write_json(input_path,browser_result(rid,screenshots=[shot],surface='other'))
+    with pytest.raises(ValueError,match='supported control surface'):
+        record(r,'browser-result',input_path)
 
 def test_reprioritize_assigns_order_and_rejects_unknown_ids(tmp_path):
     r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001',priority=7),task('B-001',priority=3)]})

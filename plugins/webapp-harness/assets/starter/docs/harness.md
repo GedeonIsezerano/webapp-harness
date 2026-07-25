@@ -112,7 +112,10 @@ Validators drive the rendered application through a tooling cascade, using the
 first surface actually available: an installed `browser_use` skill, an
 installed Chrome control surface (Chrome DevTools MCP or Chrome extension
 skill), `computer_use` MCP tools, then Playwright. The chosen surface is
-recorded in `tooling.surface`.
+recorded in `tooling.surface` as `browser_use`, `chrome_control`,
+`computer_use`, or `playwright`; each canonical surface may produce a passing
+result. The schema's `other` surface is limited to failed or incomplete
+diagnostics.
 
 ## Task priority
 

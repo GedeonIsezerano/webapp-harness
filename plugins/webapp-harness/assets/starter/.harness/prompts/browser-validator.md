@@ -34,6 +34,11 @@ it. Record the chosen surface in `tooling.surface` and any version, profile,
 or setup detail in `tooling.detail`. Do not build a bespoke one-off driver
 while a listed surface is available.
 
+Passing results may be recorded from any of the four listed control surfaces.
+Use `browser_use`, `chrome_control`, `computer_use`, or `playwright` exactly in
+`tooling.surface`. The schema's `other` value may describe failed or incomplete
+attempts, but the deterministic recorder rejects it for a passing result.
+
 ## Application environment
 
 Start and health-check the application only with the `app` section of
