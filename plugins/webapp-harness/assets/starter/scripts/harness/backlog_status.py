@@ -7,7 +7,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from common import read_json, task_map, priority_sort_key
+from common import read_json, task_map, priority_sort_key, completion_ids
 from validate_state import validate
 
 
@@ -18,16 +18,23 @@ def backlog_status(root: Path) -> dict:
 
     harness = root / ".harness"
     backlog = read_json(harness / "backlog.json")
+    completion_index = read_json(harness / "completed-tasks.json")
     state = read_json(harness / "state.json")
     tasks = task_map(backlog)
     counts = Counter(task["status"] for task in tasks.values())
+    archived_completed_ids = completion_ids(completion_index)
+    completed_ids = archived_completed_ids.union(
+        task["id"] for task in tasks.values() if task["status"] == "completed"
+    )
+    if completed_ids:
+        counts["completed"] = len(completed_ids)
     active_task_id = state.get("active_task_id")
     eligible = sorted(
         (
             task
             for task in tasks.values()
             if task["status"] == "ready"
-            and all(tasks[dependency]["status"] == "completed" for dependency in task.get("dependencies", []))
+            and all(dependency in completed_ids for dependency in task.get("dependencies", []))
         ),
         key=priority_sort_key,
     )
@@ -42,7 +49,8 @@ def backlog_status(root: Path) -> dict:
     blocked = sorted(
         task["id"] for task in tasks.values() if task["status"] == "blocked"
     )
-    complete = bool(tasks) and counts["completed"] == len(tasks)
+    total_task_count = len(tasks) + len(archived_completed_ids)
+    complete = bool(total_task_count) and len(completed_ids) == total_task_count
 
     if active_task_id:
         next_action = "resume_active"
@@ -61,7 +69,9 @@ def backlog_status(root: Path) -> dict:
         "schema_version": 1,
         "complete": complete,
         "next_action": next_action,
-        "task_count": len(tasks),
+        "task_count": total_task_count,
+        "active_task_count": len(tasks),
+        "archived_completed_task_count": len(archived_completed_ids),
         "status_counts": dict(sorted(counts.items())),
         "active_task_id": active_task_id,
         "eligible_task_ids": [task["id"] for task in eligible],

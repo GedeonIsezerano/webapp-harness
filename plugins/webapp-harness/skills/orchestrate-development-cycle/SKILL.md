@@ -29,7 +29,9 @@ user explicitly requests a separate state-model migration.
 ## Backlog preflight
 
 1. Read the applicable repository instructions and `.harness/config.json`,
-   `.harness/state.json`, and `.harness/backlog.json`.
+   `.harness/state.json`, `.harness/backlog.json`, and
+   `.harness/completed-tasks.json`. Do not load the completion archive unless
+   historical evidence is specifically needed.
 2. Run:
 
    ```bash
@@ -62,8 +64,10 @@ user explicitly requests a separate state-model migration.
    uv run python -B scripts/harness/select_next_task.py --task-id <task-id>
    ```
 
-5. Read the selected task, all acceptance criteria, allowed and forbidden
-   paths, verification profiles, retry limits, and active run record.
+5. Read `.harness/current-task.json` as the selected task document, then read
+   its acceptance criteria, allowed and forbidden paths, verification
+   profiles, retry limits, and active run record. Do not provide implementers,
+   validators, or reviewers the entire backlog.
 
 ## Implement one active task
 
@@ -197,6 +201,18 @@ Then:
 Do not ask for confirmation between tasks when the user invoked the default
 unbounded mode. A single invocation may create multiple commits, but always
 exactly one commit per successfully completed task.
+
+At a clean boundary after the requested task cycle, the user may compact
+completed tasks without losing dependency information:
+
+```bash
+uv run python -B scripts/harness/archive_completed_tasks.py --dry-run
+uv run python -B scripts/harness/archive_completed_tasks.py
+```
+
+This is separate maintenance because the task commit hash is only known after
+its final task commit. Review and commit the resulting archive/index change
+under the repository's normal policy; never archive before `create_task_commit.py`.
 
 ## Non-negotiable boundaries
 

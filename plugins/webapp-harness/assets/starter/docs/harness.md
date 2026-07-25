@@ -176,13 +176,37 @@ backlog entries.
 
 Completed task commits use `<TASK-ID>: <title>` with task, run, acceptance-criterion, and evidence metadata in the body. The created commit hash is recorded afterward in mutable run/state metadata.
 
+## Completed-task archive
+
+Keep `.harness/backlog.json` limited to proposed, ready, active, and blocked
+work. At a clean boundary after task commits have been created, archive the
+completed records:
+
+```bash
+uv run python -B scripts/harness/archive_completed_tasks.py --dry-run
+uv run python -B scripts/harness/archive_completed_tasks.py
+```
+
+The command refuses to move a task without a completed run record containing
+its commit hash and completion time. It appends each full task record to
+`.harness/archive/completed-tasks.jsonl`, removes it from the live backlog,
+and adds only `task_id`, `commit`, and `completed_at` to
+`.harness/completed-tasks.json`. Dependencies may reference that compact
+index, so task IDs are never reused. Review and commit the archival change as
+ordinary repository maintenance; do not run it before a task's final commit.
+
+Selection writes the active task's complete task object and run ID to
+`.harness/current-task.json`. Implementers, validators, and reviewers should
+read that extracted document and the active run assets, not the whole backlog.
+
 ## Sequential backlog progress
 
 `scripts/harness/backlog_status.py` reports whether the next action is to
 resume an active task, select another ready task, stop because the backlog is
 complete or empty, wait for proposed-task approval, or report a blocked
 dependency chain. The development-cycle skill runs this command before
-selection and after every task commit.
+selection and after every task commit. Its total count includes archived
+completed tasks and it separately reports the live and archived counts.
 
 The harness keeps one active task at a time and creates one commit per completed
 task. An unbounded invocation can therefore create multiple sequential commits.

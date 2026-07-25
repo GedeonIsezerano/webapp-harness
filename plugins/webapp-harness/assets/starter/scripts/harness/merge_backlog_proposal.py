@@ -10,7 +10,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from common import atomic_write_json, read_json, utc_now
+from common import atomic_write_json, completion_ids, read_json, utc_now
 from validate_state import validate
 
 
@@ -26,11 +26,11 @@ def schema_errors(document: object, schema: dict, label: str) -> list[str]:
     return errors
 
 
-def dependency_errors(tasks: list[dict]) -> list[str]:
+def dependency_errors(tasks: list[dict], completed_ids: set[str] | None = None) -> list[str]:
     errors: list[str] = []
     tasks = [task for task in tasks if isinstance(task, dict)]
     ids = [task.get("id") for task in tasks]
-    known = set(ids)
+    known = set(ids).union(completed_ids or set())
     graph = {
         task["id"]: task.get("dependencies", [])
         for task in tasks
@@ -106,8 +106,9 @@ def validate_proposal(root: Path, proposal: dict) -> list[str]:
             errors.append(f"{task_id}: e2e criteria require requires_e2e=true")
 
     backlog = read_json(harness / "backlog.json")
+    completion_index = read_json(harness / "completed-tasks.json")
     existing_tasks = backlog.get("tasks", [])
-    existing_ids = {task.get("id") for task in existing_tasks}
+    existing_ids = {task.get("id") for task in existing_tasks}.union(completion_ids(completion_index))
     proposal_ids = [
         task.get("id") for task in proposal_tasks if isinstance(task, dict)
     ]
@@ -138,7 +139,7 @@ def validate_proposal(root: Path, proposal: dict) -> list[str]:
                 + ", ".join(unknown_profiles)
             )
 
-    errors.extend(dependency_errors(existing_tasks + proposal_tasks))
+    errors.extend(dependency_errors(existing_tasks + proposal_tasks, completion_ids(completion_index)))
     return errors
 
 

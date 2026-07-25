@@ -1,6 +1,6 @@
 {
   "name": "webapp-harness",
-  "version": "0.0.6",
+  "version": "0.0.7+codex.20260725053623",
   "description": "Install and operate a deterministic sequential web-application development harness with evidence-backed backlog generation.",
   "author": {
     "name": "Gedeon Isezerano"

@@ -9,12 +9,11 @@ Resolve the active task and run from:
 
 - `.harness/state.json`
 - `.harness/current-task.json`
-- `.harness/backlog.json`
 - `.harness/runs/<active-run-id>/run.json`
 - `.harness/config.json`
 - all applicable `AGENTS.md` files
 
-Read the active task's acceptance criteria, allowed paths, forbidden paths,
+`current-task.json` is the complete extracted active task. Read its acceptance criteria, allowed paths, forbidden paths,
 verification profiles, and browser requirements. Inspect relevant source and
 tests before changing anything.
 

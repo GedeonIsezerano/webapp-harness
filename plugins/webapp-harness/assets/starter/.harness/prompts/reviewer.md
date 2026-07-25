@@ -8,7 +8,6 @@ Resolve the active task and run from:
 
 - `.harness/state.json`
 - `.harness/current-task.json`
-- `.harness/backlog.json`
 - `.harness/runs/<active-run-id>/run.json`
 - `.harness/runs/<active-run-id>/task.diff`
 - `.harness/runs/<active-run-id>/implementation-result.json`
@@ -17,7 +16,7 @@ Resolve the active task and run from:
 - `.harness/config.json`
 - all applicable `AGENTS.md` files
 
-Read `.harness/schema/review.schema.json` before returning. Inspect the changed
+`current-task.json` is the complete extracted active task. Read `.harness/schema/review.schema.json` before returning. Inspect the changed
 source and relevant unchanged context rather than reviewing the diff in
 isolation.
 

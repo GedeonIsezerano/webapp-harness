@@ -2,17 +2,18 @@
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
-from common import read_json, atomic_write_json, task_map, utc_now, priority_sort_key
+from common import read_json, atomic_write_json, task_map, utc_now, priority_sort_key, completion_ids
 from validate_state import validate
 from update_task_state import transition
 
 def select(root: Path, task_id: str | None = None) -> dict:
     errors=validate(root)
     if errors: raise ValueError('Harness state invalid:\n'+'\n'.join(errors))
-    h=root/'.harness'; backlog=read_json(h/'backlog.json'); state=read_json(h/'state.json')
+    h=root/'.harness'; backlog=read_json(h/'backlog.json'); completion_index=read_json(h/'completed-tasks.json'); state=read_json(h/'state.json')
     if state.get('active_task_id'): raise ValueError(f"Task already active: {state['active_task_id']}")
     tasks=task_map(backlog)
-    eligible=[t for t in tasks.values() if t['status']=='ready' and all(tasks[d]['status']=='completed' for d in t.get('dependencies',[]))]
+    completed=completion_ids(completion_index).union(t['id'] for t in tasks.values() if t['status']=='completed')
+    eligible=[t for t in tasks.values() if t['status']=='ready' and all(d in completed for d in t.get('dependencies',[]))]
     if not eligible: raise ValueError('No eligible ready task')
     if task_id:
         if task_id not in tasks: raise ValueError(f'Unknown task: {task_id}')
@@ -27,7 +28,7 @@ def select(root: Path, task_id: str | None = None) -> dict:
     atomic_write_json(run_dir/'run.json',run)
     state['active_run_id']=run_id; atomic_write_json(h/'state.json',state)
     transition(root,chosen['id'],'implementing','task_selected')
-    atomic_write_json(h/'current-task.json',{'task_id':chosen['id'],'run_id':run_id})
+    atomic_write_json(h/'current-task.json',{'schema_version':1,'task':chosen,'run_id':run_id,'generated_at':utc_now()})
     return {'task_id':chosen['id'],'run_id':run_id,'title':chosen['title']}
 
 def main():

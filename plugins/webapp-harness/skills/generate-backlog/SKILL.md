@@ -13,7 +13,8 @@ durable backlog.
 
 1. Resolve the Git root and read all applicable `AGENTS.md` files.
 2. Require an initialized harness with `.harness/config.json`,
-   `.harness/backlog.json`, `.harness/schema/backlog-proposal.schema.json`, and
+   `.harness/backlog.json`, `.harness/completed-tasks.json`,
+   `.harness/schema/backlog-proposal.schema.json`, and
    `scripts/harness/merge_backlog_proposal.py`.
 3. Run:
 
@@ -41,7 +42,9 @@ give it:
 
 - the repository root and requested audit scope;
 - the exact temporary proposal path it must write;
-- the existing backlog, proposal schema, task schema, and harness config paths;
+- the live backlog, compact completion index, proposal schema, task schema, and
+  harness config paths; do not provide the completion archive unless the audit
+  needs historical evidence;
 - relevant requirement and product documentation paths;
 - applicable repository instructions;
 - installed technology-specific audit or review skills it should use.

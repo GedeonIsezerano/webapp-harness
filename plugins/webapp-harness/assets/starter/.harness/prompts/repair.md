@@ -9,7 +9,6 @@ Resolve the active task and run from:
 
 - `.harness/state.json`
 - `.harness/current-task.json`
-- `.harness/backlog.json`
 - `.harness/runs/<active-run-id>/run.json`
 - `.harness/config.json`
 - all applicable `AGENTS.md` files

@@ -31,6 +31,13 @@ def atomic_write_json(path: Path, data: Any) -> None:
 def task_map(backlog: dict) -> dict[str, dict]:
     return {t['id']: t for t in backlog.get('tasks', [])}
 
+def completion_ids(completion_index: dict) -> set[str]:
+    return {
+        entry['task_id']
+        for entry in completion_index.get('completed_tasks', [])
+        if isinstance(entry, dict) and isinstance(entry.get('task_id'), str)
+    }
+
 def active_tasks(backlog: dict) -> list[dict]:
     return [t for t in backlog.get('tasks', []) if t.get('status') in {'implementing','verifying','reviewing'}]
 

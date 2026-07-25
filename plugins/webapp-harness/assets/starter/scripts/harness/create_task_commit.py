@@ -18,7 +18,7 @@ def within(path:str,prefix:str) -> bool:
     return path==normalized or path.startswith(normalized+'/')
 def assert_task_scope(root:Path,task:dict) -> None:
     scope=task.get('scope',{}); allowed=scope.get('allowed_paths',[]); forbidden=scope.get('forbidden_paths',[])
-    runtime_paths=['.harness/backlog.json','.harness/state.json','.harness/current-task.json','.harness/runs/']
+    runtime_paths=['.harness/backlog.json','.harness/completed-tasks.json','.harness/archive/','.harness/state.json','.harness/current-task.json','.harness/runs/']
     violations=[]
     for path in sorted(changed_paths(root)):
         if any(within(path,prefix) for prefix in runtime_paths): continue
@@ -39,6 +39,7 @@ def create(root:Path):
     run_data['status']='completed'; run_data['stop_reason']='completed'
     state['active_run_id']=None; state['updated_at']=utc_now()
     atomic_write_json(h/'runs'/rid/'run.json',run_data); atomic_write_json(h/'state.json',state)
+    (h/'current-task.json').unlink(missing_ok=True)
     run(root,'add','-A'); run(root,'commit','-m',subject,'-m',body); sha=run(root,'rev-parse','HEAD')
     run_data['result_commit']=sha; run_data['committed_at']=utc_now(); atomic_write_json(h/'runs'/rid/'run.json',run_data)
     state['last_completed_commit']=sha; state['updated_at']=utc_now(); atomic_write_json(h/'state.json',state)

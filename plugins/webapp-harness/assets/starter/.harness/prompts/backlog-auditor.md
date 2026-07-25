@@ -8,7 +8,7 @@ read-only: do not edit product files, harness state, or Git history.
 Read:
 
 - all applicable `AGENTS.md` files;
-- `.harness/config.json`, `.harness/backlog.json`, and
+- `.harness/config.json`, `.harness/backlog.json`, `.harness/completed-tasks.json`, and
   `.harness/schema/backlog-proposal.schema.json`;
 - `.harness/schema/task.schema.json`;
 - `docs/harness.md`;
@@ -51,7 +51,7 @@ Read each selected skill fully before acting. Do not invoke
   validation. Do not claim a visual or browser gap was observed unless
   rendered application evidence was actually collected.
 - Exclude work already represented by an existing backlog task unless the
-  evidence shows a separate gap.
+  evidence shows a separate gap. Do not reuse an ID from the completion index.
 
 ## Return
 

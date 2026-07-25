@@ -10,13 +10,12 @@ Resolve the active task and run from:
 
 - `.harness/state.json`
 - `.harness/current-task.json`
-- `.harness/backlog.json`
 - `.harness/runs/<active-run-id>/run.json`
 - `.harness/config.json`
 - `.harness/runs/<active-run-id>/verification.json`
 - all applicable `AGENTS.md` files
 
-Read every browser, visual, and E2E acceptance criterion. Inspect
+`current-task.json` is the complete extracted active task. Read every browser, visual, and E2E acceptance criterion. Inspect
 `.harness/schema/browser-result.schema.json` before returning.
 
 ## Tooling cascade

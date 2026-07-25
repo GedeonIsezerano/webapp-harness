@@ -3,11 +3,11 @@ from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
 from jsonschema import Draft202012Validator
-from common import read_json, task_map, active_tasks
+from common import read_json, task_map, active_tasks, completion_ids
 from lifecycle import ALLOWED_TRANSITIONS
 
-REQUIRED=['config.json','backlog.json','state.json']
-SCHEMAS={'config.json':'config.schema.json','backlog.json':'backlog.schema.json','state.json':'state.schema.json'}
+REQUIRED=['config.json','backlog.json','completed-tasks.json','state.json']
+SCHEMAS={'config.json':'config.schema.json','backlog.json':'backlog.schema.json','completed-tasks.json':'completion-index.schema.json','state.json':'state.schema.json'}
 
 def validate(root: Path) -> list[str]:
     h=root/'.harness'; errors=[]; docs={}
@@ -22,7 +22,7 @@ def validate(root: Path) -> list[str]:
                 loc='/'.join(map(str,err.absolute_path)) or '<root>'
                 errors.append(f'{name}:{loc}: {err.message}')
         except ValueError as e: errors.append(str(e))
-    backlog=docs['backlog.json']; state=docs['state.json']; tasks=backlog.get('tasks',[])
+    backlog=docs['backlog.json']; completion_index=docs['completed-tasks.json']; state=docs['state.json']; tasks=backlog.get('tasks',[])
     try:
         task_schema=read_json(h/'schema'/'task.schema.json')
         for idx, task in enumerate(tasks):
@@ -32,7 +32,13 @@ def validate(root: Path) -> list[str]:
     except ValueError as e: errors.append(str(e))
     ids=[t.get('id') for t in tasks]
     if len(ids)!=len(set(ids)): errors.append('backlog.json: task IDs must be unique')
-    known=set(ids)
+    completed_ids=completion_ids(completion_index)
+    if len(completed_ids) != len(completion_index.get('completed_tasks', [])):
+        errors.append('completed-tasks.json: task IDs must be unique')
+    overlap=sorted(set(ids).intersection(completed_ids))
+    if overlap:
+        errors.append('backlog.json and completed-tasks.json repeat task IDs: '+', '.join(overlap))
+    known=set(ids).union(completed_ids)
     for t in tasks:
         for dep in t.get('dependencies',[]):
             if dep not in known: errors.append(f"{t.get('id')}: unknown dependency {dep}")

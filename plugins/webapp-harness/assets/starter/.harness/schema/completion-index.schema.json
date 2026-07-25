@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "completed_tasks"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "completed_tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "commit",
+          "completed_at"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_-]*-[0-9]+$"
+          },
+          "commit": {
+            "type": "string",
+            "minLength": 1
+          },
+          "completed_at": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

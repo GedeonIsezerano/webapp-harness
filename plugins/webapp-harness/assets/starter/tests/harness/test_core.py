@@ -10,6 +10,7 @@ from create_task_commit import assert_task_scope
 from merge_backlog_proposal import apply as apply_proposal, preview as preview_proposal
 from record_result import record
 from reprioritize import reprioritize
+from archive_completed_tasks import archive_completed
 from common import priority_sort_key
 from conftest import write_json
 
@@ -37,8 +38,45 @@ def test_priority_sort_key_orders_low_values_first():
     assert priority_sort_key({'id':'A-001'})>priority_sort_key({'id':'Z-099','priority':999})
 def test_dependency_blocks_selection(tmp_path):
     r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001',deps=['B-001']),task('B-001')]}); assert select(r)['task_id']=='B-001'
+
+def test_archived_completion_satisfies_selection_and_preserves_full_record(tmp_path):
+    r=fixture(tmp_path)
+    completed=task('DONE-001',status='completed')
+    dependent=task('NEXT-001',deps=['DONE-001'])
+    write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[completed,dependent]})
+    run_dir=r/'.harness/runs'/'DONE-001-run'; run_dir.mkdir(parents=True)
+    write_json(run_dir/'run.json',{'task_id':'DONE-001','status':'completed','result_commit':'abc123','completed_at':'2026-07-25T00:00:00Z'})
+    result=archive_completed(r)
+    assert result['archived_task_ids']==['DONE-001']
+    backlog=json.loads((r/'.harness/backlog.json').read_text())
+    assert [entry['id'] for entry in backlog['tasks']]==['NEXT-001']
+    index=json.loads((r/'.harness/completed-tasks.json').read_text())
+    assert index['completed_tasks']==[{'task_id':'DONE-001','commit':'abc123','completed_at':'2026-07-25T00:00:00Z'}]
+    archive_records=[json.loads(line) for line in (r/'.harness/archive/completed-tasks.jsonl').read_text().splitlines()]
+    assert archive_records[0]['task']==completed
+    assert archive_records[0]['completion']==index['completed_tasks'][0]
+    assert not validate(r)
+    assert select(r)['task_id']=='NEXT-001'
+
+def test_archiving_requires_committed_run_evidence_and_dry_run_does_not_write(tmp_path):
+    r=fixture(tmp_path); completed=task('DONE-001',status='completed')
+    write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[completed]})
+    try: archive_completed(r); assert False, 'expected missing committed run failure'
+    except ValueError as exc: assert 'result commit' in str(exc)
+    run_dir=r/'.harness/runs'/'DONE-001-run'; run_dir.mkdir(parents=True)
+    write_json(run_dir/'run.json',{'task_id':'DONE-001','status':'completed','result_commit':'abc123','completed_at':'2026-07-25T00:00:00Z'})
+    assert archive_completed(r,dry_run=True)['archived_task_ids']==['DONE-001']
+    assert json.loads((r/'.harness/backlog.json').read_text())['tasks'][0]['id']=='DONE-001'
+    assert not (r/'.harness/archive/completed-tasks.jsonl').exists()
 def test_explicit_task_selection_preserves_sequential_eligibility(tmp_path):
     r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001'),task('B-001',priority=10)]}); assert select(r,'A-001')['task_id']=='A-001'
+
+def test_selection_writes_extracted_current_task_document(tmp_path):
+    r=fixture(tmp_path); selected_task=task('A-001')
+    write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[selected_task]})
+    selected=select(r)
+    current=json.loads((r/'.harness/current-task.json').read_text())
+    assert current['run_id']==selected['run_id'] and current['task']==selected_task
 def test_explicit_task_selection_rejects_dependency_stalled_task(tmp_path):
     r=fixture(tmp_path); write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('A-001',deps=['B-001']),task('B-001')]})
     try: select(r,'A-001'); assert False, 'expected eligibility failure'
@@ -108,6 +146,17 @@ def test_backlog_proposal_rejects_duplicates_and_unknown_profiles(tmp_path):
         message=str(exc)
         assert 'repeat' in message and 'unknown verification profiles' in message
 
+def test_backlog_proposal_respects_archived_task_ids_and_dependencies(tmp_path):
+    r=fixture(tmp_path)
+    write_json(r/'.harness/completed-tasks.json',{'schema_version':1,'completed_tasks':[{'task_id':'DONE-001','commit':'abc123','completed_at':'2026-07-25T00:00:00Z'}]})
+    proposal=r/'proposal.json'; dependent=proposed_task('GAP-001',deps=['DONE-001'])
+    write_json(proposal,{'schema_version':1,'tasks':[dependent]})
+    assert preview_proposal(r,proposal)['task_count']==1
+    duplicate=proposed_task('DONE-001')
+    write_json(proposal,{'schema_version':1,'tasks':[duplicate]})
+    try: preview_proposal(r,proposal); assert False, 'expected archived ID conflict'
+    except ValueError as exc: assert 'already exist' in str(exc)
+
 def test_backlog_proposal_rejects_dependency_cycle(tmp_path):
     r=fixture(tmp_path); proposal=r/'proposal.json'
     first=proposed_task('GAP-001',deps=['GAP-002'])
@@ -140,6 +189,14 @@ def test_backlog_status_distinguishes_complete_empty_and_awaiting_approval(tmp_p
     assert complete['complete'] is True and complete['next_action']=='complete'
     write_json(r/'.harness/backlog.json',{'schema_version':1,'tasks':[task('IDEA-001',status='proposed')]})
     assert backlog_status(r)['next_action']=='awaiting_approval'
+
+def test_backlog_status_counts_archived_completions(tmp_path):
+    r=fixture(tmp_path)
+    write_json(r/'.harness/completed-tasks.json',{'schema_version':1,'completed_tasks':[{'task_id':'DONE-001','commit':'abc123','completed_at':'2026-07-25T00:00:00Z'}]})
+    status=backlog_status(r)
+    assert status['next_action']=='complete'
+    assert status['task_count']==1 and status['active_task_count']==0
+    assert status['archived_completed_task_count']==1 and status['status_counts']=={'completed':1}
 
 def test_schema_files_valid_json():
     for p in (Path(__file__).parents[2]/'.harness/schema').glob('*.json'): json.loads(p.read_text())
