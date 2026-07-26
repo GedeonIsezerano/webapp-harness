@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,9 @@ from pathlib import Path
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_ROOT = PLUGIN_ROOT / "assets" / "starter"
 MANIFEST_PATH = PLUGIN_ROOT / ".codex-plugin" / "plugin.json"
+CREDENTIALS_EXAMPLE_PATH = Path(".harness/dev-credentials.example.json")
+CREDENTIALS_LOCAL_PATH = Path(".harness/dev-credentials.local.json")
+CREDENTIALS_GITIGNORE_ENTRY = "/.harness/dev-credentials.local.json"
 
 
 @dataclass(frozen=True)
@@ -47,7 +51,13 @@ def git_root(start: Path) -> Path:
 def template_files() -> list[Path]:
     if not TEMPLATE_ROOT.is_dir():
         raise ValueError(f"Missing plugin starter assets: {TEMPLATE_ROOT}")
-    files = sorted(path for path in TEMPLATE_ROOT.rglob("*") if path.is_file())
+    files = sorted(
+        path
+        for path in TEMPLATE_ROOT.rglob("*")
+        if path.is_file()
+        and "__pycache__" not in path.parts
+        and path.suffix != ".pyc"
+    )
     if not files:
         raise ValueError(f"Plugin starter is empty: {TEMPLATE_ROOT}")
     for path in files:
@@ -89,6 +99,79 @@ def plugin_version() -> str:
         raise ValueError(f"Invalid plugin manifest: {MANIFEST_PATH}") from exc
 
 
+def local_setup_plan(root: Path) -> dict[str, object]:
+    credentials = root / CREDENTIALS_LOCAL_PATH
+    gitignore = root / ".gitignore"
+    gitignore_lines = (
+        gitignore.read_bytes().splitlines()
+        if gitignore.is_file()
+        else []
+    )
+    return {
+        "credentials": {
+            "path": CREDENTIALS_LOCAL_PATH.as_posix(),
+            "status": "preserve" if credentials.exists() else "create",
+            "permissions": "0600",
+        },
+        "gitignore": {
+            "path": ".gitignore",
+            "entry": CREDENTIALS_GITIGNORE_ENTRY,
+            "status": (
+                "present"
+                if CREDENTIALS_GITIGNORE_ENTRY.encode() in gitignore_lines
+                else "append" if gitignore.exists() else "create"
+            ),
+        },
+    }
+
+
+def ensure_local_credentials(root: Path) -> dict[str, object]:
+    example = root / CREDENTIALS_EXAMPLE_PATH
+    credentials = root / CREDENTIALS_LOCAL_PATH
+    gitignore = root / ".gitignore"
+
+    if credentials.is_symlink():
+        raise ValueError(
+            f"Refusing to manage symlinked credential file: {credentials}"
+        )
+    if credentials.exists() and not credentials.is_file():
+        raise ValueError(f"Credential path is not a file: {credentials}")
+    if gitignore.is_symlink():
+        raise ValueError(f"Refusing to manage symlinked ignore file: {gitignore}")
+    if gitignore.exists() and not gitignore.is_file():
+        raise ValueError(f"Ignore path is not a file: {gitignore}")
+    if not example.is_file():
+        raise ValueError(f"Missing installed credential example: {example}")
+
+    credential_status = "preserved"
+    if not credentials.exists():
+        shutil.copy2(example, credentials)
+        credential_status = "created"
+    os.chmod(credentials, 0o600)
+
+    gitignore_status = "present"
+    existing = gitignore.read_bytes() if gitignore.is_file() else b""
+    entry = CREDENTIALS_GITIGNORE_ENTRY.encode()
+    if entry not in existing.splitlines():
+        separator = b"" if not existing or existing.endswith((b"\n", b"\r")) else b"\n"
+        with gitignore.open("ab") as handle:
+            handle.write(separator + entry + b"\n")
+        gitignore_status = "appended" if existing else "created"
+
+    return {
+        "credentials": {
+            "path": CREDENTIALS_LOCAL_PATH.as_posix(),
+            "status": credential_status,
+            "permissions": "0600",
+        },
+        "gitignore": {
+            "path": ".gitignore",
+            "entry": CREDENTIALS_GITIGNORE_ENTRY,
+            "status": gitignore_status,
+        },
+    }
+
+
 def install(
     root: Path, plan: list[FilePlan], preserve_conflicts: bool
 ) -> dict[str, object]:
@@ -123,6 +206,7 @@ def install(
     metadata_path = root / ".harness" / "plugin-install.json"
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
     metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    local_setup = ensure_local_credentials(root)
     return {
         "created": created,
         "identical": [
@@ -130,6 +214,7 @@ def install(
         ],
         "preserved_conflicts": [entry.path for entry in conflicts],
         "metadata": str(metadata_path.relative_to(root)),
+        "local_setup": local_setup,
     }
 
 
@@ -142,6 +227,7 @@ def summarize(root: Path, plan: list[FilePlan]) -> dict[str, object]:
             for state in ("create", "identical", "conflict")
         },
         "files": [asdict(entry) for entry in plan],
+        "local_setup": local_setup_plan(root),
     }
 
 

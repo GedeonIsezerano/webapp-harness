@@ -10,6 +10,9 @@
       ".harness/"
     ]
   },
+  "browser_validation": {
+    "credentials_file": ".harness/dev-credentials.local.json"
+  },
   "verification_profiles": {},
   "commit": {
     "required": true,

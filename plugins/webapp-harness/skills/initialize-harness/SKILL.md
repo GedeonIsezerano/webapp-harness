@@ -51,9 +51,39 @@ backlog without implementing or selecting a product task.
    `notes`) whenever the repository has a discoverable dev server; browser
    validation depends on it and reports `INCOMPLETE` without it.
    Omit commands that fail discovery checks and report why they were omitted.
-9. Configure allowed dirty paths narrowly. Preserve existing Git hooks and
+9. Prepare the development-only browser credential contract:
+
+   - Keep `browser_validation.credentials_file` set to the repository-relative
+     ignored credential path. The default is
+     `.harness/dev-credentials.local.json`.
+   - The installer creates that file from
+     `.harness/dev-credentials.example.json`, applies owner-only `0600`
+     permissions, and appends an exact ignore rule without replacing existing
+     `.gitignore` content.
+   - Inspect repository development-auth documentation and existing ignored
+     credential stores. Populate the configured file only with real
+     development test accounts the user or repository already authorizes. If
+     an existing ignored store should remain authoritative, point
+     `credentials_file` to it instead of duplicating secrets. Leave the
+     generated default empty; validators use only the explicitly configured
+     path.
+   - Use the structure in
+     `.harness/schema/dev-credentials.schema.json`: each account has a
+     non-secret label, a development sign-in URL, an optional role, and a
+     `credentials` object whose keys match the rendered sign-in fields. The
+     sign-in URL origin must match the configured `app.health_url` origin.
+   - Never invent credentials, copy production credentials, print secret
+     values, or commit the local file. An empty account list means credentialed
+     role validation is not ready and must be reported as a limitation.
+   - Verify the configured file is ignored:
+
+     ```bash
+     git check-ignore --quiet <credentials-file>
+     ```
+
+10. Configure allowed dirty paths narrowly. Preserve existing Git hooks and
    repository policies.
-10. Run:
+11. Run:
 
    ```bash
    uv sync --dev
@@ -62,15 +92,15 @@ backlog without implementing or selecting a product task.
    uv run python scripts/harness/validate_state.py
    ```
 
-11. Re-run installer plan mode. Explain any remaining conflicts as intentional
+12. Re-run installer plan mode. Explain any remaining conflicts as intentional
     repository adaptations.
-12. Report created and merged files, detected commands, validation results, and
-    limitations.
-13. Read `../generate-backlog/SKILL.md` relative to this skill directory and
+13. Report created and merged files, detected commands, credential readiness
+    without secret values, validation results, and limitations.
+14. Read `../generate-backlog/SKILL.md` relative to this skill directory and
     follow its audit, validation, preview, and confirmation workflow. This is a
     required part of initialization, not a suggestion-only handoff. Never treat
     the user's approval to initialize as approval to write the proposed tasks.
-14. After the user confirms, revises, or cancels the proposal, report the
+15. After the user confirms, revises, or cancels the proposal, report the
     outcome and suggest `$webapp-harness:generate-backlog` for future gap
     audits. Stop without selecting a task or invoking the cycle skill.
 
@@ -83,5 +113,7 @@ backlog without implementing or selecting a product task.
 - Do not append generated backlog tasks without the separate confirmation
   required by the generate-backlog skill.
 - Do not commit unless the user explicitly requests it.
+- Do not expose, screenshot, log, or include development credential values in
+  prompts, results, evidence, commits, or summaries.
 - Do not claim browser tooling is configured until it is exercised in the
   target application.
