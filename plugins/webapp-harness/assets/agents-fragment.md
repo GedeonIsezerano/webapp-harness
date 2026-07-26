@@ -13,6 +13,10 @@
 - Respect each task's allowed and forbidden path scope.
 - Completion requires passed command verification, direct rendered-app browser
   evidence when required, and fresh independent review approval.
+- Use the ignored development credential file named by
+  `.harness/config.json` only for normal rendered development-app sign-in
+  during browser validation; never expose, screenshot, log, or commit its
+  values.
 - Create exactly one task-referenced commit after each successful task,
   record the resulting hash, and re-check deterministic backlog status before
   selecting the next task.

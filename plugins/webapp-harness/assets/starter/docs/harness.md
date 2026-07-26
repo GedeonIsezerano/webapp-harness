@@ -98,6 +98,55 @@ The development-cycle orchestrator starts the app with `start_command` when
 `health_url` is not responding, and validators report `INCOMPLETE` instead of
 inventing an environment when `app` is missing or unhealthy.
 
+## Development credentials for browser validation
+
+Initialization creates `.harness/dev-credentials.local.json` from the committed
+empty `.harness/dev-credentials.example.json`, sets owner-only `0600`
+permissions, and adds `/.harness/dev-credentials.local.json` to `.gitignore`.
+The local file is never a managed or committable starter asset.
+
+`.harness/config.json` identifies the file without containing secrets:
+
+```json
+{
+  "browser_validation": {
+    "credentials_file": ".harness/dev-credentials.local.json"
+  }
+}
+```
+
+Populate only development test accounts:
+
+```json
+{
+  "schema_version": 1,
+  "environment": "development",
+  "accounts": [
+    {
+      "label": "seeded-admin",
+      "role": "admin",
+      "sign_in_url": "http://localhost:3000/sign-in",
+      "credentials": {
+        "email": "admin@example.test",
+        "password": "development-only-value"
+      },
+      "notes": "Seeded local administrator"
+    }
+  ]
+}
+```
+
+Credential keys should match the rendered sign-in fields. The browser
+validator may load the configured file silently and use it only through the
+normal development-app sign-in UI after confirming the account's
+`sign_in_url` origin matches the configured `app.health_url` origin. Values
+must never appear in prompts, logs, screenshots, evidence, results, commits,
+or summaries, and must never be used against production. If configuration
+points to another existing ignored credential store, the generated default
+file remains empty and is not consulted. Validate the local structure against
+`.harness/schema/dev-credentials.schema.json` without printing values, and
+verify Git ignores the configured path before browser validation.
+
 ## Browser validation evidence
 
 Tasks with `verification.requires_browser: true` must collect structured

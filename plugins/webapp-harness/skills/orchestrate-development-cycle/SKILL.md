@@ -132,6 +132,22 @@ evidence for every browser criterion, and at least one screenshot per
 criterion saved under `.harness/runs/<active-run-id>/evidence/` and
 referenced in the recorded result.
 
+Resolve `browser_validation.credentials_file` from `.harness/config.json`,
+falling back to `.harness/dev-credentials.local.json` for upgraded harnesses.
+When that ignored file exists, declares `environment: development`, and
+contains applicable accounts, it is an explicitly authorized browser-validation
+input rather than a generic password store. Give the validator only the file
+path, never its contents. The validator may load values silently into its local
+automation process and enter them only through the rendered development-app
+sign-in flow after confirming the account's `sign_in_url` origin matches the
+configured `app.health_url` origin. It must never print, log, return,
+screenshot, commit, or persist credential values elsewhere. Do not provide
+credentials to implementers or reviewers, use them against production URLs,
+inspect unrelated password stores, or bypass normal application authorization.
+Record only account labels/roles and observable outcomes. If required accounts
+are absent, also check legitimate app-native test-account creation and existing
+authenticated sessions before reporting the criterion `INCOMPLETE`.
+
 Record the selected surface exactly as `browser_use`, `chrome_control`,
 `computer_use`, or `playwright`. All four canonical surfaces may produce a
 passing result. `other` may document a failed or incomplete attempt, but the

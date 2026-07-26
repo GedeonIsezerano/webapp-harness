@@ -53,6 +53,21 @@
     "verification_profiles": {
       "type": "object"
     },
+    "browser_validation": {
+      "type": "object",
+      "description": "Local inputs used only for rendered development-app validation.",
+      "required": [
+        "credentials_file"
+      ],
+      "properties": {
+        "credentials_file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repository-relative path to the ignored development credential file."
+        }
+      },
+      "additionalProperties": false
+    },
     "app": {
       "type": "object",
       "description": "How to run and health-check the application under test. Browser validation depends on it.",

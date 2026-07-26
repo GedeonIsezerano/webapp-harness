@@ -12,6 +12,8 @@ Resolve the active task and run from:
 - `.harness/current-task.json`
 - `.harness/runs/<active-run-id>/run.json`
 - `.harness/config.json`
+- the ignored development credential file named by
+  `browser_validation.credentials_file`, when present
 - `.harness/runs/<active-run-id>/verification.json`
 - all applicable `AGENTS.md` files
 
@@ -45,6 +47,32 @@ Start and health-check the application only with the `app` section of
 `.harness/config.json` (`start_command`, `health_url`, `notes`). If `app` is
 not configured or the application does not become healthy, report
 `INCOMPLETE`; do not invent an unconfigured environment.
+
+## Development credentials
+
+Resolve `browser_validation.credentials_file` from `.harness/config.json`,
+falling back to `.harness/dev-credentials.local.json` for an upgraded
+installation. Use it only when it is ignored by Git, declares
+`environment: development`, and targets the configured development
+application. When configuration explicitly points elsewhere, ignore the
+generated default file. Before entering any value, confirm the account's
+`sign_in_url` origin matches the configured `app.health_url` origin; otherwise
+do not use that account.
+
+The credential file is expressly authorized for normal rendered-app browser
+sign-in during validation. Load it without emitting its contents, keep values
+only in the local automation process, and enter them only into the matching
+rendered sign-in fields. Never print, log, return, screenshot, commit, or copy
+credential values; never use them against production, inspect unrelated
+password stores, bypass authorization, or include them in result evidence.
+Refer to accounts only by non-secret label or role. Avoid screenshots while
+secret fields are populated.
+
+If the file is missing, malformed, empty, not ignored, or lacks a required
+role, check legitimate application-native test-account creation and existing
+authenticated sessions. If the required state still cannot be reached, report
+the affected criterion `NOT_VERIFIED` and the overall result `INCOMPLETE`
+without requesting that secret values be pasted into the conversation.
 
 ## Validate
 
