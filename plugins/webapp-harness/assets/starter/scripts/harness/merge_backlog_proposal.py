@@ -102,8 +102,15 @@ def validate_proposal(root: Path, proposal: dict) -> list[str]:
             errors.append(
                 f"{task_id}: browser or visual criteria require requires_browser=true"
             )
-        if "e2e" in criterion_kinds and not verification.get("requires_e2e"):
-            errors.append(f"{task_id}: e2e criteria require requires_e2e=true")
+        if "e2e" in criterion_kinds and not verification.get("requires_browser"):
+            errors.append(f"{task_id}: e2e criteria require requires_browser=true")
+        if verification.get("requires_browser") and not criterion_kinds.intersection(
+            {"browser", "visual", "e2e"}
+        ):
+            errors.append(
+                f"{task_id}: requires_browser=true needs a browser, visual, "
+                "or e2e acceptance criterion"
+            )
 
     backlog = read_json(harness / "backlog.json")
     completion_index = read_json(harness / "completed-tasks.json")

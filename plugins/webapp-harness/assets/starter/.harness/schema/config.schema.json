@@ -4,7 +4,6 @@
   "required": [
     "schema_version",
     "retry_limits",
-    "repository",
     "verification_profiles",
     "commit"
   ],
@@ -35,21 +34,6 @@
       },
       "additionalProperties": false
     },
-    "repository": {
-      "type": "object",
-      "required": [
-        "allowed_dirty_paths"
-      ],
-      "properties": {
-        "allowed_dirty_paths": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": true
-    },
     "verification_profiles": {
       "type": "object"
     },
@@ -75,21 +59,53 @@
       },
       "additionalProperties": false
     },
+    "browser": {
+      "type": "object",
+      "description": "Optional reusable setup that avoids rediscovering routes, fixtures, and role profiles.",
+      "properties": {
+        "playbook_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "fixture_notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "profile_notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "commit": {
       "type": "object",
       "required": [
-        "required",
         "subject_format"
       ],
       "properties": {
         "required": {
-          "type": "boolean"
+          "const": true,
+          "deprecated": true,
+          "description": "Compatibility only. The sequential harness always creates one task commit."
         },
         "subject_format": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "description": "Python format string supporting {task_id} and {title}."
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

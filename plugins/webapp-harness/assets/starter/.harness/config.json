@@ -5,14 +5,8 @@
     "browser": 2,
     "review": 2
   },
-  "repository": {
-    "allowed_dirty_paths": [
-      ".harness/"
-    ]
-  },
   "verification_profiles": {},
   "commit": {
-    "required": true,
     "subject_format": "{task_id}: {title}"
   }
 }

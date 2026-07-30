@@ -5,14 +5,11 @@
     "schema_version",
     "active_task_id",
     "active_run_id",
-    "last_completed_task_id",
-    "last_completed_commit",
-    "transition_history",
-    "updated_at"
+    "pending_commit_task_id"
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "active_task_id": {
       "type": [
@@ -26,33 +23,11 @@
         "null"
       ]
     },
-    "last_completed_task_id": {
+    "pending_commit_task_id": {
       "type": [
         "string",
         "null"
       ]
-    },
-    "last_completed_commit": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "transition_history": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "task_id",
-          "from",
-          "to",
-          "reason",
-          "timestamp"
-        ]
-      }
-    },
-    "updated_at": {
-      "type": "string"
     }
   },
   "additionalProperties": false

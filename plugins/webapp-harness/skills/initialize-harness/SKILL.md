@@ -50,27 +50,43 @@ backlog without implementing or selecting a product task.
    Populate the optional `app` section (`start_command`, `health_url`,
    `notes`) whenever the repository has a discoverable dev server; browser
    validation depends on it and reports `INCOMPLETE` without it.
+   Populate optional `browser.playbook_paths`, `fixture_notes`, and
+   `profile_notes` only from maintained repository evidence. Never store
+   credentials. These shortcuts prevent validators from rediscovering stable
+   routes and setup on every task.
    Omit commands that fail discovery checks and report why they were omitted.
-9. Configure allowed dirty paths narrowly. Preserve existing Git hooks and
-   repository policies.
-10. Run:
+9. Preserve existing Git hooks and repository policies. Lifecycle boundaries
+   require a fully clean worktree; do not configure path exceptions that could
+   leak one task's harness metadata into another task's commit.
+10. When upgrading a pre-v0.0.10 harness, reconcile the new schemas and scripts
+    first, then preview the lossless migration before using the new validator:
+
+    ```bash
+    uv run python -B scripts/harness/migrate_v0_0_10.py --plan
+    ```
+
+    Show the exact plan. Apply it only when the user explicitly approves that
+    migration, using `--apply --confirmed`. Never infer migration approval from
+    permission to initialize or upgrade. If approval is pending, pause the
+    upgrade here; old state is not expected to validate against the new schema.
+11. Run:
 
    ```bash
    uv sync --dev
-   uv run python -m compileall -q scripts/harness
+   uv run python -B -c "from pathlib import Path; [compile(path.read_text(), str(path), 'exec') for path in Path('scripts/harness').glob('*.py')]"
    uv run pytest tests/harness
-   uv run python scripts/harness/validate_state.py
+   uv run python -B scripts/harness/validate_state.py
    ```
 
-11. Re-run installer plan mode. Explain any remaining conflicts as intentional
+12. Re-run installer plan mode. Explain any remaining conflicts as intentional
     repository adaptations.
-12. Report created and merged files, detected commands, validation results, and
+13. Report created and merged files, detected commands, validation results, and
     limitations.
-13. Read `../generate-backlog/SKILL.md` relative to this skill directory and
+14. Read `../generate-backlog/SKILL.md` relative to this skill directory and
     follow its audit, validation, preview, and confirmation workflow. This is a
     required part of initialization, not a suggestion-only handoff. Never treat
     the user's approval to initialize as approval to write the proposed tasks.
-14. After the user confirms, revises, or cancels the proposal, report the
+15. After the user confirms, revises, or cancels the proposal, report the
     outcome and suggest `$webapp-harness:generate-backlog` for future gap
     audits. Stop without selecting a task or invoking the cycle skill.
 

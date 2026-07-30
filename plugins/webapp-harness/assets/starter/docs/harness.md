@@ -1,216 +1,222 @@
 # Harness architecture
 
-This is a generic deterministic sequential task harness installed inside the application repository. The repository is its durable memory.
+The harness is a repository-native, deterministic, sequential task runner. The
+repository is durable memory; agents do not own lifecycle state.
 
-## Python environment
+## Runtime model
 
-The harness uses `uv`, `pyproject.toml`, and a committed `uv.lock`.
+`.harness/state.json` is intentionally tiny. It records only the active task,
+active run, and a completed task waiting for its final commit. Global
+transition history lives append-only in
+`.harness/archive/transitions.jsonl`; the active run also carries its relevant
+transitions.
+
+Each run has one canonical `run.json`. Phase results are ordered entries under
+`results.implementation`, `results.verification`, `results.review`, and
+`results.browser_validation`. The harness does not write duplicate
+`implementation-result.json`, `verification.json`, `review.json`, or
+`browser-result.json` files. Ordered sequence numbers prevent stale evidence
+from advancing a repaired task.
+
+The lifecycle is:
+
+```text
+ready -> implementing -> verifying -> reviewing
+                                      |          \
+                                      |           -> completed (no browser)
+                                      -> browser_validating -> completed
+```
+
+Any product repair returns to implementation, then requires new verification
+and review. Logic review runs before browser validation so review-driven code
+repairs do not invalidate an expensive browser pass.
+
+## Python and verification
+
+Use `uv`, the repository `pyproject.toml`, and committed `uv.lock`:
 
 ```bash
 uv sync --dev
 uv run pytest tests/harness
-uv run python scripts/harness/validate_state.py
+uv run python -B scripts/harness/validate_state.py
 ```
 
-Do not create or maintain a separate `requirements.txt` for the harness.
-
-## Verification profiles
-
-`.harness/config.json` maps profile names to ordered command specifications.
-Commands are argument arrays and run without a shell:
+`.harness/config.json` maps verification profile names to ordered argument
+arrays. Commands run directly without a shell:
 
 ```json
 {
   "verification_profiles": {
-    "unit": [
-      {
-        "name": "Unit tests",
-        "command": ["npm", "test", "--", "--runInBand"]
-      }
-    ],
     "quality": [
-      {
-        "name": "Lint",
-        "command": ["npm", "run", "lint"]
-      },
-      {
-        "name": "Typecheck",
-        "command": ["npm", "run", "typecheck"]
-      }
+      {"name": "Lint", "command": ["npm", "run", "lint"]},
+      {"name": "Typecheck", "command": ["npm", "run", "typecheck"]}
+    ],
+    "unit": [
+      {"name": "Unit tests", "command": ["npm", "test"]}
     ]
   }
 }
 ```
 
-Reference only profile names that exist in this map from backlog tasks. During
-initialization, include commands only after confirming that they exist and run
-in the real repository. A task with no executed command checks is incomplete,
-not passed.
+Only configure commands proven to exist. Zero executed checks are
+`INCOMPLETE`, never passed.
 
-A Python backend repository would instead configure pytest plus an integration
-or migration check:
+`retry_limits` are maximum counted product failures per phase. After a
+non-passing result, inspect the deterministic decision:
 
-```json
-{
-  "verification_profiles": {
-    "unit": [
-      {
-        "name": "Backend unit tests",
-        "command": ["pytest", "tests/unit", "-q"]
-      }
-    ],
-    "integration": [
-      {
-        "name": "Backend integration tests",
-        "command": ["pytest", "tests/integration", "-q"]
-      }
-    ],
-    "quality": [
-      {
-        "name": "Lint",
-        "command": ["ruff", "check", "."]
-      },
-      {
-        "name": "Typecheck",
-        "command": ["mypy", "src"]
-      }
-    ]
-  }
-}
+```bash
+uv run python -B scripts/harness/retry_status.py verification
+uv run python -B scripts/harness/retry_status.py review
+uv run python -B scripts/harness/retry_status.py browser
 ```
 
-## Application config for browser validation
+Only `product` failures consume verification/browser retry budget. Missing
+fixtures, profiles, tooling, environment, or scope block immediately, retain
+their classification, and record an exact `blocker` instead of causing
+repeated blind attempts.
 
-The optional `app` section tells browser validators how to run and
-health-check the application under test:
+## Browser validation
+
+Configure application startup and health when discoverable:
 
 ```json
 {
   "app": {
     "start_command": ["npm", "run", "dev"],
     "health_url": "http://localhost:3000",
-    "notes": "Use the seeded staff account; onboarding requires an account with no business."
+    "notes": "Use documented seeded accounts only."
   }
 }
 ```
 
-The development-cycle orchestrator starts the app with `start_command` when
-`health_url` is not responding, and validators report `INCOMPLETE` instead of
-inventing an environment when `app` is missing or unhealthy.
+Persist stable navigation, fixture, and role-profile knowledge in config
+instead of making every validator rediscover it:
 
-## Browser validation evidence
+```json
+{
+  "browser": {
+    "playbook_paths": ["tests/e2e/playbooks/onboarding.md"],
+    "fixture_notes": ["Seed with the documented local fixture command."],
+    "profile_notes": ["Customer and Admin require independently connected profiles."]
+  }
+}
+```
 
-Tasks with `verification.requires_browser: true` must collect structured
-browser evidence before review. Recording a browser result requires at least
-one screenshot per criterion, saved under `.harness/runs/<run-id>/evidence/`
-and referenced in the result; `record_result.py` rejects results whose
-screenshots are missing on disk or outside the active run directory.
-`update_task_state.py` rejects the transition to `reviewing` while the active
-task requires browser validation and no passed browser result is recorded.
+Only reference maintained repository files and non-secret notes. A playbook
+reduces exploration but never substitutes for current rendered observation.
 
-Validators drive the rendered application through a tooling cascade, using the
-first surface actually available: an installed `browser_use` skill, an
-installed Chrome control surface (Chrome DevTools MCP or Chrome extension
-skill), `computer_use` MCP tools, then Playwright. The chosen surface is
-recorded in `tooling.surface` as `browser_use`, `chrome_control`,
-`computer_use`, or `playwright`; each canonical surface may produce a passing
-result. The schema's `other` surface is limited to failed or incomplete
-diagnostics.
+Selection creates `browser-plan.json` containing exactly the browser, visual,
+and E2E acceptance criteria. The validator:
 
-## Task priority
+1. preflights health, fixtures, independent profiles, and tooling once;
+2. groups criteria into the fewest coherent journeys;
+3. reuses navigation and fixture state;
+4. captures screenshots at proof states rather than after every action;
+5. may reference one screenshot from several criteria when it visibly proves
+   each;
+6. verifies persisted state and finishes relevant flows with a fresh
+   page/console/network observation.
 
-Lower priority values run first; 1 is the highest priority. Selection and
-status reporting sort eligible tasks by `(priority, id)`. Reorder the backlog
-deterministically instead of editing `backlog.json` by hand:
+Evidence stays under `.harness/runs/<run-id>/evidence/`. A passing result must
+cover the exact plan through direct rendered-app interaction. Browser windows
+or tabs are not assumed to isolate identities; use independently connected
+profiles where simultaneous roles matter.
+
+Canonical control surfaces are `browser_use`, `chrome_control`,
+`computer_use`, and `playwright`. `other` may describe a non-passing attempt
+but cannot pass.
+
+## Backlog and commits
+
+Lower priority values run first. Reprioritize without editing lifecycle fields:
 
 ```bash
 uv run python -B scripts/harness/reprioritize.py <task-id> [<task-id> ...]
 ```
 
-The first ID receives priority 1, the second priority 2, and so on.
-
-## New-repository setup
-
-1. Copy or merge the harness files into the target repository root.
-2. Merge the harness dependencies and pytest configuration into the repository's existing `pyproject.toml`, or use the supplied file when none exists.
-3. Run `uv sync --dev` and commit `uv.lock`.
-4. Run the generic harness tests and state validator.
-5. Invoke `$webapp-harness:initialize-harness`.
-6. Let that workflow inspect real commands, browser startup, Git policy, and
-   repository structure, then update `.harness/config.json` and tests.
-7. Review its evidence-backed proposed backlog. Initialization must request
-   explicit confirmation before appending any tasks.
-8. Confirm, revise, or cancel the proposal. Confirmed tasks are appended as
-   `proposed`, never automatically made runnable.
-9. Promote an accepted task explicitly:
-
-   ```bash
-uv run python -B scripts/harness/update_task_state.py <task-id> ready \
-     --reason user_approved
-   ```
-
-10. Invoke `$webapp-harness:orchestrate-development-cycle` from a fresh agent
-    session. By default it processes ready tasks sequentially until the backlog
-    is complete or a real blocker is reached. Ask for “only one task” when a
-    single-task invocation is desired.
-
-## Gap-based backlog generation
-
-Run `$webapp-harness:generate-backlog` after initialization or whenever the
-repository's requirements, implementation, and verification evidence have
-drifted. The workflow audits through a read-only subagent and writes a proposal
-to a temporary file. It then validates and previews every task before asking
-for confirmation.
-
-The deterministic merge command has two phases:
+Replace a proposed, ready, or blocked task's dependency list at a clean
+lifecycle boundary without hand-editing backlog JSON:
 
 ```bash
-uv run python -B scripts/harness/merge_backlog_proposal.py \
-  --proposal <proposal.json> --plan
-uv run python -B scripts/harness/merge_backlog_proposal.py \
-  --proposal <proposal.json> --apply --confirmed \
-  --expected-sha256 <sha256-from-plan>
+uv run python -B scripts/harness/update_task_dependencies.py <task-id> \
+  --set <dependency-id> [<dependency-id> ...] --reason <reason>
 ```
 
-Apply rejects changed proposal content, duplicate task IDs, dependency cycles,
-unknown dependencies, unknown verification profiles, missing gap evidence, and
-tasks not in `proposed` status. It appends tasks without replacing existing
-backlog entries.
+The command validates IDs and cycles and writes a cold audit event. Obsolete
+proposed, ready, or blocked tasks may transition deterministically to
+`cancelled` or `superseded`; dependencies on those retired tasks remain
+unsatisfied until explicitly rewritten.
 
-Completed task commits use `<TASK-ID>: <title>` with task, run, acceptance-criterion, and evidence metadata in the body. The created commit hash is recorded afterward in mutable run/state metadata.
+The deprecated `verification.requires_e2e` flag is ignored; E2E need is derived
+from each acceptance criterion's verification kinds.
+
+The sequential harness always creates one final task commit.
+`commit.subject_format` is effective and supports `{task_id}` and `{title}`.
+The old `commit.required: true` field is accepted only for upgrade
+compatibility and should be removed.
+
+Task boundaries require a fully clean Git worktree. v0.0.10 removes
+`repository.allowed_dirty_paths`: allowing all `.harness/` changes hid
+post-commit metadata and could leak it into the next task's commit.
 
 ## Completed-task archive
 
-Keep `.harness/backlog.json` limited to proposed, ready, active, and blocked
-work. At a clean boundary after task commits have been created, archive the
-completed records:
+After the final task commit is known, cold-store completed tasks and runs:
 
 ```bash
 uv run python -B scripts/harness/archive_completed_tasks.py --dry-run
 uv run python -B scripts/harness/archive_completed_tasks.py
 ```
 
-The command refuses to move a task without a completed run record containing
-its commit hash and completion time. It appends each full task record to
-`.harness/archive/completed-tasks.jsonl`, removes it from the live backlog,
-and adds only `task_id`, `commit`, and `completed_at` to
-`.harness/completed-tasks.json`. Dependencies may reference that compact
-index, so task IDs are never reused. Review and commit the archival change as
-ordinary repository maintenance; do not run it before a task's final commit.
+The command appends the full task to
+`.harness/archive/completed-tasks.jsonl`, keeps a compact dependency entry in
+`.harness/completed-tasks.json`, and moves the run directory to
+`.harness/archive/runs/<run-id>`. It removes only standalone result files that
+are exactly redundant with canonical run data. It never guesses that an
+unreferenced screenshot is safe to delete.
 
-Selection writes the active task's complete task object and run ID to
-`.harness/current-task.json`. Implementers, validators, and reviewers should
-read that extracted document and the active run assets, not the whole backlog.
+Archive maintenance is a separate change because a Git commit cannot contain
+its own hash. Do not mix it into an unrelated product-task commit.
 
-## Sequential backlog progress
+## Upgrade existing v0.0.8 state
 
-`scripts/harness/backlog_status.py` reports whether the next action is to
-resume an active task, select another ready task, stop because the backlog is
-complete or empty, wait for proposed-task approval, or report a blocked
-dependency chain. The development-cycle skill runs this command before
-selection and after every task commit. Its total count includes archived
-completed tasks and it separately reports the live and archived counts.
+After reconciling starter conflicts during initialization, preview the lossless
+state/run migration:
 
-The harness keeps one active task at a time and creates one commit per completed
-task. An unbounded invocation can therefore create multiple sequential commits.
-Use an explicit one-task or maximum-count request to bound an invocation.
+```bash
+uv run python -B scripts/harness/migrate_v0_0_10.py --plan
+uv run python -B scripts/harness/migrate_v0_0_10.py --apply --confirmed
+uv run python -B scripts/harness/validate_state.py
+```
+
+Apply only when the plan reports `clean_lifecycle_boundary: true`. Finish or
+block an active legacy run before changing lifecycle contracts.
+
+Migration moves legacy global transitions to cold JSONL, converts embedded
+phase results to ordered canonical entries, and deletes only exact duplicate
+standalone result files. It also removes the old `plugin-install.json`
+provenance file, which no runtime or upgrade decision consumed. Historical run
+directories for task IDs already in the completion index move to
+`.harness/archive/runs/`, including earlier failed attempts for tasks that
+eventually completed. Runs for unresolved tasks stay hot. Review the plan before
+applying it; `unresolved_run_directories_retained` makes that conservative
+remainder explicit instead of deleting or silently archiving it. The migration
+also removes deprecated `repository`, `commit.required`, and live-task
+`requires_e2e` fields after showing their counts in the plan.
+
+## Backlog generation and progress
+
+Use `$webapp-harness:generate-backlog` for an evidence-backed proposal. The
+two-phase merge remains hash-bound and requires explicit confirmation:
+
+```bash
+uv run python -B scripts/harness/merge_backlog_proposal.py \
+  --proposal <proposal.json> --plan
+uv run python -B scripts/harness/merge_backlog_proposal.py \
+  --proposal <proposal.json> --apply --confirmed \
+  --expected-sha256 <previewed-sha256>
+```
+
+`backlog_status.py` is the source of truth for resume, selection, completion,
+approval waits, and stalls. Agents read `.harness/current-task.json` and the
+active run, not the entire backlog or completion archive.

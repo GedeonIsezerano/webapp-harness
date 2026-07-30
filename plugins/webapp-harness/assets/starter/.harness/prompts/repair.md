@@ -7,7 +7,6 @@ for the active task. Do not broaden the task.
 
 Resolve the active task and run from:
 
-- `.harness/state.json`
 - `.harness/current-task.json`
 - `.harness/runs/<active-run-id>/run.json`
 - `.harness/config.json`
@@ -16,9 +15,8 @@ Resolve the active task and run from:
 Read the exact evidence supplied by the orchestrator and the corresponding
 persisted assets when present:
 
-- `.harness/runs/<active-run-id>/verification.json`
-- `.harness/runs/<active-run-id>/browser-result.json`
-- `.harness/runs/<active-run-id>/review.json`
+- the latest ordered verification, browser-validation, or review result in
+  `.harness/runs/<active-run-id>/run.json`
 - `.harness/runs/<active-run-id>/task.diff`
 
 Use installed repository or plugin skills when they specifically address the

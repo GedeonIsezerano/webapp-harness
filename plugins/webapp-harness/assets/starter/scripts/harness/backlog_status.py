@@ -49,8 +49,14 @@ def backlog_status(root: Path) -> dict:
     blocked = sorted(
         task["id"] for task in tasks.values() if task["status"] == "blocked"
     )
+    retired_ids = {
+        task["id"]
+        for task in tasks.values()
+        if task["status"] in {"cancelled", "superseded"}
+    }
     total_task_count = len(tasks) + len(archived_completed_ids)
-    complete = bool(total_task_count) and len(completed_ids) == total_task_count
+    resolved_count = len(completed_ids) + len(retired_ids)
+    complete = bool(total_task_count) and resolved_count == total_task_count
 
     if active_task_id:
         next_action = "resume_active"
@@ -66,12 +72,13 @@ def backlog_status(root: Path) -> dict:
         next_action = "stalled"
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "complete": complete,
         "next_action": next_action,
         "task_count": total_task_count,
-        "active_task_count": len(tasks),
+        "live_task_count": len(tasks),
         "archived_completed_task_count": len(archived_completed_ids),
+        "retired_task_count": len(retired_ids),
         "status_counts": dict(sorted(counts.items())),
         "active_task_id": active_task_id,
         "eligible_task_ids": [task["id"] for task in eligible],

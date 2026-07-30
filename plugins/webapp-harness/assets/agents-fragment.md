@@ -11,8 +11,11 @@
 - Deterministic scripts own task selection and lifecycle transitions; agents
   must not edit lifecycle fields directly.
 - Respect each task's allowed and forbidden path scope.
-- Completion requires passed command verification, direct rendered-app browser
-  evidence when required, and fresh independent review approval.
+- Run fresh independent logic review after command verification and before
+  expensive browser validation. Completion also requires direct rendered-app
+  evidence when the task requires it.
+- Use the deterministic retry decision; fixture, tooling, environment, and
+  scope blockers must not consume product retry budget.
 - Create exactly one task-referenced commit after each successful task,
-  record the resulting hash, and re-check deterministic backlog status before
-  selecting the next task.
+  report the resulting hash, and re-check deterministic backlog status before
+  selecting the next task. Do not rewrite tracked run state after committing.

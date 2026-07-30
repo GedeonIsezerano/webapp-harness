@@ -5,6 +5,7 @@
     "task_id",
     "run_id",
     "status",
+    "failure_class",
     "checks"
   ],
   "properties": {
@@ -19,6 +20,21 @@
         "PASSED",
         "FAILED",
         "INCOMPLETE"
+      ]
+    },
+    "failure_class": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "product",
+        "fixture",
+        "profile",
+        "tooling",
+        "environment",
+        "scope",
+        null
       ]
     },
     "checks": {

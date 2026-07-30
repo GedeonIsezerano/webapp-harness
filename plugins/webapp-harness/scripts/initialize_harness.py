@@ -8,7 +8,6 @@ import shutil
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -109,27 +108,14 @@ def install(
         shutil.copy2(source, target)
         created.append(entry.path)
 
-    metadata = {
-        "schema_version": 1,
+    return {
         "plugin": "webapp-harness",
         "plugin_version": plugin_version(),
-        "installed_at": datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z"),
-        "managed_files": [entry.path for entry in plan],
-        "preserved_conflicts": [entry.path for entry in conflicts],
-    }
-    metadata_path = root / ".harness" / "plugin-install.json"
-    metadata_path.parent.mkdir(parents=True, exist_ok=True)
-    metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
-    return {
         "created": created,
         "identical": [
             entry.path for entry in plan if entry.status == "identical"
         ],
         "preserved_conflicts": [entry.path for entry in conflicts],
-        "metadata": str(metadata_path.relative_to(root)),
     }
 
 

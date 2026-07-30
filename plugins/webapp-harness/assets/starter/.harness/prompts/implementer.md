@@ -7,7 +7,6 @@ planning subagent or planning lifecycle stage.
 
 Resolve the active task and run from:
 
-- `.harness/state.json`
 - `.harness/current-task.json`
 - `.harness/runs/<active-run-id>/run.json`
 - `.harness/config.json`
@@ -25,10 +24,9 @@ When the active task `type` is `backend`, also read
 `.harness/prompts/backend.md` before editing and apply its implementation
 checklist.
 
-Harness scripts under `scripts/harness/` own selection, lifecycle transitions,
-result recording, verification, and final commit creation. You may inspect
-those scripts to understand their contract, but do not edit lifecycle fields,
-run the final commit script, or bypass them.
+Harness scripts own selection, lifecycle transitions, result recording,
+verification, and final commit creation. Do not edit lifecycle fields, run the
+final commit script, or write standalone phase-result files.
 
 ## Work
 

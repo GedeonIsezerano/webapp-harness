@@ -30,6 +30,14 @@
           "completed_at": {
             "type": "string",
             "minLength": 1
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "archive_path": {
+            "type": "string",
+            "pattern": "^\\.harness/archive/runs/"
           }
         },
         "additionalProperties": false

@@ -61,24 +61,25 @@ def test_release_versions_are_synchronized() -> None:
     manifest_version = json.loads(
         (plugin_root / ".codex-plugin/plugin.json").read_text()
     )["version"]
-    qwen_version = json.loads(
-        (plugin_root / "qwen-extension.json").read_text()
-    )["version"]
     project_version = tomllib.loads(
         (repository_root / "pyproject.toml").read_text()
     )["project"]["version"]
-    assert {manifest_version, qwen_version, project_version} == {"0.0.8"}
+    assert {manifest_version, project_version} == {"0.0.10"}
 
 
-def test_install_copies_starter_and_records_metadata(tmp_path: Path) -> None:
+def test_plugin_does_not_include_qwen_extension_manifest() -> None:
+    plugin_root = SCRIPT.parents[1]
+    assert not (plugin_root / "qwen-extension.json").exists()
+
+
+def test_install_copies_starter_without_unused_metadata_file(tmp_path: Path) -> None:
     root = git_repo(tmp_path)
     result = MODULE.install(root, MODULE.build_plan(root), preserve_conflicts=False)
     assert (root / ".harness/config.json").is_file()
     assert (root / "scripts/harness/validate_state.py").is_file()
-    metadata = json.loads((root / ".harness/plugin-install.json").read_text())
-    assert metadata["plugin"] == "webapp-harness"
-    assert metadata["plugin_version"]
-    assert ".harness/config.json" in metadata["managed_files"]
+    assert not (root / ".harness/plugin-install.json").exists()
+    assert result["plugin"] == "webapp-harness"
+    assert result["plugin_version"] == "0.0.10"
     assert result["preserved_conflicts"] == []
 
 

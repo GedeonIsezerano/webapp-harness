@@ -55,8 +55,11 @@
         "implementing",
         "verifying",
         "reviewing",
+        "browser_validating",
         "completed",
-        "blocked"
+        "blocked",
+        "cancelled",
+        "superseded"
       ]
     },
     "priority": {
@@ -121,8 +124,7 @@
       "type": "object",
       "required": [
         "profiles",
-        "requires_browser",
-        "requires_e2e"
+        "requires_browser"
       ],
       "properties": {
         "profiles": {
@@ -135,7 +137,9 @@
           "type": "boolean"
         },
         "requires_e2e": {
-          "type": "boolean"
+          "type": "boolean",
+          "deprecated": true,
+          "description": "Compatibility only. E2E work is derived from acceptance-criterion verification kinds."
         }
       },
       "additionalProperties": false

@@ -69,9 +69,16 @@ before running a development cycle.
 
 `$webapp-harness:orchestrate-development-cycle` processes ready tasks
 sequentially until the backlog is complete or it reaches a real blocker. Every
-task retains its own implementation, verification, browser-validation, review,
-and commit boundary. Ask it to run “only one task,” “up to N tasks,” or a
-specific eligible task when you want a bounded invocation.
+task retains its own implementation, verification, logic-review,
+browser-validation, and commit boundary. In v0.0.10 logic review precedes
+browser validation, phase results are append-only in one canonical run record,
+and non-product browser blockers do not consume product retries. Ask it to run
+“only one task,” “up to N tasks,” or a specific eligible task when you want a
+bounded invocation.
+
+Existing harnesses should reconcile installer conflicts, then preview
+`scripts/harness/migrate_v0_0_10.py --plan`. The migration compacts state and
+exact duplicate result artifacts without deleting screenshots heuristically.
 
 Commit the initialized baseline and return the target repository to a clean
 state before running the first development cycle.

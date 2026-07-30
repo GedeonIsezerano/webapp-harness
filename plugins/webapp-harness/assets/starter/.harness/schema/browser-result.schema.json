@@ -5,6 +5,9 @@
     "task_id",
     "run_id",
     "status",
+    "failure_class",
+    "blocker",
+    "preflight",
     "tooling",
     "criteria"
   ],
@@ -21,6 +24,53 @@
         "FAILED",
         "INCOMPLETE"
       ]
+    },
+    "failure_class": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "product",
+        "fixture",
+        "profile",
+        "tooling",
+        "environment",
+        "scope",
+        null
+      ],
+      "description": "Classify why a non-passing attempt stopped. Only product failures consume browser retry budget."
+    },
+    "blocker": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Exact non-passing prerequisite or observed product failure; null only for PASSED."
+    },
+    "preflight": {
+      "type": "object",
+      "required": [
+        "app_healthy",
+        "fixtures_ready",
+        "profiles_ready",
+        "tooling_ready"
+      ],
+      "properties": {
+        "app_healthy": {
+          "type": "boolean"
+        },
+        "fixtures_ready": {
+          "type": "boolean"
+        },
+        "profiles_ready": {
+          "type": "boolean"
+        },
+        "tooling_ready": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     },
     "tooling": {
       "type": "object",
@@ -101,12 +151,11 @@
           },
           "screenshots": {
             "type": "array",
-            "description": "Repository-relative paths of screenshots captured during this criterion, saved under .harness/runs/<run-id>/evidence/. At least one is required.",
+            "description": "Repository-relative screenshots under the active run. The same screenshot may support several criteria when it visibly proves each one.",
             "items": {
               "type": "string",
               "minLength": 1
-            },
-            "minItems": 1
+            }
           },
           "evidence": {
             "type": "array",

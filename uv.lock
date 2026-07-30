@@ -302,7 +302,7 @@ wheels = [
 
 [[package]]
 name = "webapp-harness-plugin"
-version = "0.0.8"
+version = "0.0.10"
 source = { virtual = "." }
 
 [package.dev-dependencies]

@@ -1,9 +1,6 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "active_task_id": null,
   "active_run_id": null,
-  "last_completed_task_id": null,
-  "last_completed_commit": null,
-  "transition_history": [],
-  "updated_at": "2026-07-23T00:00:00Z"
+  "pending_commit_task_id": null
 }
