@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["issue_number", "run_id", "status", "failure_class", "checks"],
+  "properties": {
+    "issue_number": {"type": "integer", "minimum": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["PASSED", "FAILED", "INCOMPLETE"]},
+    "failure_class": {"type": ["string", "null"], "enum": ["product", "fixture", "profile", "tooling", "environment", "scope", null]},
+    "checks": {"type": "array", "items": {"type": "object"}}
+  },
+  "additionalProperties": false
+}

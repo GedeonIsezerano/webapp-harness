@@ -1,4 +1,4 @@
 interface:
-  display_name: "Run Backlog Cycle"
-  short_description: "Run verified tasks sequentially to completion"
-  default_prompt: "Use $webapp-harness:orchestrate-development-cycle to run the ready backlog sequentially until it is complete."
+  display_name: "Run GitHub Backlog Cycle"
+  short_description: "Complete issue-backed tasks sequentially"
+  default_prompt: "Use $webapp-harness:orchestrate-development-cycle to run the ready GitHub issue backlog sequentially until complete or blocked."

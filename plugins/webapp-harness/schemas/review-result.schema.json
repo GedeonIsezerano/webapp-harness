@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["issue_number", "run_id", "verdict", "findings"],
+  "properties": {
+    "issue_number": {"type": "integer", "minimum": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "verdict": {"enum": ["APPROVED", "CHANGES_REQUIRED", "INCOMPLETE"]},
+    "findings": {"type": "array", "items": {"type": "object"}}
+  },
+  "additionalProperties": false
+}

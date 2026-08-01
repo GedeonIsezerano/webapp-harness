@@ -1,208 +1,154 @@
 ---
 name: orchestrate-development-cycle
-description: Run or resume ready backlog tasks through the installed `.harness` lifecycle, sequentially implementing, verifying, logic-reviewing, browser-validating when required, committing, and continuing until complete or genuinely blocked. Use to drain an initialized backlog or run an explicitly bounded eligible task set.
+description: Run or resume ready GitHub issue-backed Webapp Harness tasks sequentially through implementation, verification, independent logic review, required rendered browser validation, evidence upload, and one task-referenced commit. Use to drain an initialized GitHub issue backlog or run an explicitly bounded eligible issue set without repository-local harness state.
 ---
 
 # Orchestrate Development Cycle
 
-Run one active task at a time. Deterministic scripts own state, selection,
-ordered result history, retry decisions, transitions, verification, and commit
-creation. Never edit lifecycle fields directly.
+Treat GitHub task issues and append-only events as durable authority. Resolve
+the absolute plugin root from this skill's location, then read
+`<plugin-root>/references/github-state.md`, all applicable `AGENTS.md`, and the
+installed resource paths before work. Use absolute plugin paths for all helper
+invocations below.
 
 ## Resolve the stop policy
 
-- No explicit limit: continue until complete or blocked.
-- “Only one task”: stop after one completed or blocked task.
-- Explicit count or task IDs: stop at that boundary.
-
-Do not infer a one-task limit. Keep one final commit per completed task.
+- With no explicit limit, continue until complete or genuinely blocked.
+- Honor an explicit one-task, count, or issue-number boundary.
+- Keep one active task and one final task commit at a time.
 
 ## Preflight and select
-
-Read applicable repository instructions plus `.harness/config.json`. Run:
-
-```bash
-uv run python -B scripts/harness/validate_state.py
-uv run python -B scripts/harness/backlog_status.py
-```
-
-Follow `next_action`: resume, select, report complete/empty, wait for proposed
-task approval, or report the exact stalled groups. An active task is expected
-to have tracked harness changes, so do not run a clean-boundary check before
-`resume_active`.
-
-For `select_next` only, require a clean boundary and then select
-deterministically:
-
-```bash
-uv run python -B scripts/harness/check_repo_clean.py --before-task
-uv run python -B scripts/harness/select_next_task.py
-```
-
-Use `--task-id <id>` only for an explicitly requested eligible task. Read
-`.harness/current-task.json` and its active `run.json`; do not give workers the
-whole backlog.
-
-## Implement
-
-Spawn one temporary implementation subagent. This skill explicitly authorizes
-that delegation. Direct it to `.harness/prompts/implementer.md` and provide the
-task, scope, applicable instructions, result schema, and relevant skills. It
-must not edit lifecycle state or commit.
-
-Write its returned JSON to a temporary path outside the repository, then:
-
-```bash
-uv run python -B scripts/harness/record_result.py \
-  implementation-result <temporary-result.json>
-uv run python -B scripts/harness/update_task_state.py <task-id> verifying \
-  --reason implementation_finished
-```
-
-## Verify and make a deterministic retry decision
 
 Run:
 
 ```bash
-uv run python -B scripts/harness/verify_task.py
+python3 <plugin-root>/scripts/github_harness.py validate \
+  --root <repo-root> --repo <owner/repo>
+python3 <plugin-root>/scripts/github_harness.py status \
+  --root <repo-root> --repo <owner/repo>
 ```
 
-On a non-passing result, run:
+Resume the single active issue. Otherwise require a clean Git worktree and
+select the first dependency-satisfied ready issue by priority then issue number.
+Stop for proposed-task promotion, dependency stalls, blockers, invalid remote
+state, or unavailable GitHub. Separate-clone concurrent orchestration is
+unsupported.
+
+Transition a selected issue from `ready` to `implementing` with a fresh run
+UUID and exact reason, then obtain its validated context:
 
 ```bash
-uv run python -B scripts/harness/retry_status.py verification
+python3 <plugin-root>/scripts/github_harness.py transition \
+  --root <repo-root> --repo <owner/repo> --issue <number> \
+  --to implementing --reason selected --run-id <uuid>
+python3 <plugin-root>/scripts/github_harness.py context \
+  --root <repo-root> --repo <owner/repo> --issue <number>
 ```
 
-- `repair`: transition to `implementing`, spawn a repair worker using
-  `.harness/prompts/repair.md`, record its implementation result, transition
-  back to `verifying`, and verify again:
+## Implement
 
-  ```bash
-  uv run python -B scripts/harness/update_task_state.py \
-    <task-id> implementing --reason verification_product_failure
-  uv run python -B scripts/harness/record_result.py \
-    implementation-result <temporary-repair-result.json>
-  uv run python -B scripts/harness/update_task_state.py \
-    <task-id> verifying --reason repair_finished
-  uv run python -B scripts/harness/verify_task.py
-  ```
+Spawn one implementation worker with the issue URL/number, task/config/event
+snapshot, run UUID, applicable instructions, installed implementer prompt,
+result schema, and matching skills. The worker cannot write GitHub or commit.
 
-- `block`: always persist the terminal transition before stopping:
-
-  ```bash
-  uv run python -B scripts/harness/update_task_state.py \
-    <task-id> blocked --reason <failure-class-and-exact-evidence>
-  ```
-
-- `advance`: continue.
-
-Zero checks are `INCOMPLETE`. Only `product` failures consume retry budget;
-non-product prerequisites block immediately instead of causing blind retries.
-
-## Review logic before browser work
-
-After passed verification:
+`recommended_paths` are non-exclusive. `forbidden_paths` are absolute for the
+worker. If it needs one, it stops before touching it. The main agent makes the
+executive decision: reject it, edit the file directly, or record an exact
+override before authorizing a follow-up worker:
 
 ```bash
-uv run python -B scripts/harness/update_task_state.py <task-id> reviewing \
-  --reason verification_passed
-uv run python -B scripts/harness/collect_diff.py
+python3 <plugin-root>/scripts/github_harness.py scope-override \
+  --root <repo-root> --repo <owner/repo> --issue <number> --run-id <uuid> \
+  --path <path> --operation modify --reason <reason>
 ```
 
-Spawn a fresh read-only reviewer. Direct it to
-`.harness/prompts/reviewer.md`, the current task, canonical run, diff, review
-schema, applicable instructions, matching review skills, and the generated
-browser plan when browser validation is required. Browser evidence is
-intentionally pending. Record its temporary result:
+Do not ask the user for a routine task-level override that remains within the
+accepted outcome. Ask only when it crosses user/repository authority, expands
+scope materially, or requires destructive, production, deployment, purchase,
+or third-party action. Never let parent and worker edit overlapping files
+concurrently.
+
+Validate the returned JSON in a temporary directory and record it with
+`record-result --kind implementation`. Then transition to `verifying`.
+
+## Verify and retry
+
+Run every configured verification profile directly as argument arrays, with no
+shell and at least one executed check. Record the structured result. Only
+`product` failures consume retry budget; `fixture`, `profile`, `tooling`,
+`environment`, and `scope` block immediately with exact evidence.
+
+After every non-passing verification, review, or browser result, obtain the
+deterministic decision before changing phase:
 
 ```bash
-uv run python -B scripts/harness/record_result.py review <temporary-result.json>
+python3 <plugin-root>/scripts/github_harness.py retry-status \
+  --root <repo-root> --repo <owner/repo> --issue <number> \
+  --run-id <uuid> --phase <verification|review|browser>
 ```
 
-For `CHANGES_REQUIRED`, run `retry_status.py review`. On `block`, persist the
-`reviewing -> blocked` transition before stopping. On `repair`, transition to
-`implementing`, record the repair result, explicitly transition to
-`verifying`, run verification, transition to `reviewing`, rerun
-`collect_diff.py`, and obtain a fresh review. Ordered run events and the diff
-snapshot make stale evidence fail deterministic gates.
+For a product repair, transition to `implementing`, use a fresh repair worker,
+record a new implementation result, and repeat verification. Any main-agent
+code edit is also a new implementation result and invalidates later evidence.
 
-## Browser-validate only approved code
+## Review before browser validation
 
-Skip this section when `verification.requires_browser` is false. Otherwise:
+After passed verification, transition to `reviewing`. Capture the current diff
+outside the repository and spawn a fresh read-only reviewer with the issue
+context, ordered events, diff, browser plan when required, reviewer prompt,
+schema, and matching review skills. Record its result.
+
+For changes required, return through implementation and verification, collect
+a fresh diff, and obtain a fresh review. Never carry stale approval forward.
+
+## Browser validation
+
+When required, transition to `browser_validating`. Preflight the configured app
+health and start it only with the configured command when needed. Create a
+temporary evidence directory outside the repository. Spawn a fresh validator
+with the exact browser/visual/E2E criteria, context snapshot, browser prompt,
+schema, playbooks, and evidence directory.
+
+Use current rendered interaction and persisted state. Record the result. For a
+passing result, upload the redacted binary bundle and record its immutable URL
+and digest:
 
 ```bash
-uv run python -B scripts/harness/update_task_state.py \
-  <task-id> browser_validating --reason logic_review_approved
+python3 <plugin-root>/scripts/github_harness.py upload-evidence \
+  --root <repo-root> --repo <owner/repo> --issue <number> \
+  --run-id <uuid> --directory <temporary-evidence-dir>
 ```
 
-Check `app.health_url` once. If it is down and `app.start_command` is
-configured, start that command once and wait for health before spawning the
-validator. If the app cannot become healthy, use the validator only to return
-the structured `environment` `INCOMPLETE` preflight result, then follow the
-`block` path; do not begin UI exploration.
+Never upload credentials, secrets, production data, or sensitive screenshots.
+Product repairs repeat implementation, verification, review, and browser work.
 
-Spawn one fresh browser validator and direct it to
-`.harness/prompts/browser-validator.md`. It must use the generated
-`browser-plan.json` plus configured playbook/fixture/profile shortcuts,
-preflight health/fixtures/profiles/tooling once, group criteria into minimal
-journeys, reuse meaningful evidence, and directly drive the rendered app. Use
-the first available canonical surface:
-`browser_use`, `chrome_control`, `computer_use`, then `playwright`.
+## Commit and complete
 
-Save screenshots under the active run's `evidence/` directory and record the
-temporary result:
+After every required gate passes, inspect the actual diff, preserve unrelated
+work, and stage an explicit allowlist of the files actually changed for this
+task. Create exactly one commit using the configured subject and trailers:
+
+```text
+Harness-Issue: #<number>
+Harness-Run: <uuid>
+```
+
+Record completion only after the commit succeeds:
 
 ```bash
-uv run python -B scripts/harness/record_result.py \
-  browser-result <temporary-result.json>
+python3 <plugin-root>/scripts/github_harness.py transition \
+  --root <repo-root> --repo <owner/repo> --issue <number> \
+  --to completed --reason <commit-sha> --run-id <uuid>
 ```
 
-On failure, run `retry_status.py browser`.
-
-- For `block`, transition `browser_validating -> blocked` with the failure
-  class and exact evidence before stopping. Fixture, tooling, environment, and
-  scope blockers therefore stop without consuming browser retry budget or
-  leaving an active task that restarts preflight.
-- For `repair`, transition to `implementing`, record the repair result,
-  explicitly transition to `verifying`, run verification, transition to
-  `reviewing`, rerun `collect_diff.py`, obtain and record a fresh review, then
-  transition back to `browser_validating`.
-
-Never jump directly from implementation to a verification command. Any code
-repair must repeat verification and logic review before browser validation.
-
-## Complete, commit, and continue
-
-After approved review and, when required, passed browser validation:
-
-```bash
-uv run python -B scripts/harness/update_task_state.py <task-id> completed \
-  --reason acceptance_gates_passed
-uv run python -B scripts/harness/create_task_commit.py
-uv run python -B scripts/harness/check_repo_clean.py --before-next-task
-uv run python -B scripts/harness/backlog_status.py
-```
-
-Report task/run IDs, acceptance results, verification, review, browser result,
-and commit. Continue according to the invocation boundary.
-
-At a clean maintenance boundary, cold-store committed completed tasks and run
-evidence:
-
-```bash
-uv run python -B scripts/harness/archive_completed_tasks.py --dry-run
-uv run python -B scripts/harness/archive_completed_tasks.py
-```
-
-This archive change is separate because a commit cannot contain its own hash.
-Do not let it leak into an unrelated product-task commit.
+Require a clean worktree, validate remote state, report the issue/evidence/
+commit URLs, and continue according to the stop policy. If GitHub cannot record
+an event, do not advance, commit, close, or select another task.
 
 ## Non-negotiable boundaries
 
-- One active task and one final commit per completed task.
-- Fresh implementation, logic-review, and browser contexts per task.
+- Main agent owns GitHub lifecycle writes and executive scope overrides.
+- Workers never edit GitHub state or make final commits.
 - Logic review precedes browser validation.
-- No completion with stale or missing verification, review, or required browser
-  evidence.
-- No agent lifecycle edits, deployment, or external writes outside active task
-  authority.
+- No completion with stale, missing, or hash-invalid evidence.
+- No repository-local harness state or evidence.

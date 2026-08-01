@@ -5,13 +5,15 @@ This repository is the source of truth for the local Codex plugin in
 
 ## Editing rules
 
-- Edit the normalized starter under `plugins/webapp-harness/assets/starter/`.
+- Keep executable helpers, prompts, schemas, and references local under
+  `plugins/webapp-harness/`; target repositories must not receive harness state
+  or copied plugin resources.
 - Keep the plugin name, plugin folder, and marketplace entry synchronized as
   `webapp-harness`.
 - Do not add `.mcp.json`, `.app.json`, or hooks unless the plugin actually
   requires those capabilities.
-- Do not copy the plugin skills into the starter's `.agents/skills`; installed
-  plugin skills and repository skills with the same name appear as duplicates.
+- Do not copy plugin skills into target repositories; installed plugin skills
+  and repository skills with the same name appear as duplicates.
 - Do not install, reinstall, publish, or commit the plugin unless the user
   explicitly asks.
 

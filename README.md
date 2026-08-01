@@ -1,11 +1,11 @@
 # Webapp Harness plugin
 
-This repository manages a local Codex plugin that installs and operates a
-repository-native, sequential web-application development harness.
+This repository manages a local Codex plugin that operates a sequential,
+GitHub issue-backed web-application development harness.
 
-The maintained plugin source lives at `plugins/webapp-harness/`. Its normalized
-starter assets are the source of truth for files installed into target
-repositories.
+The maintained plugin source lives at `plugins/webapp-harness/`. Skills,
+scripts, prompts, schemas, and reference material remain in the plugin. Target
+repositories receive no harness state or copied tooling.
 
 ## Repository layout
 
@@ -14,8 +14,10 @@ repositories.
 plugins/webapp-harness/
   .codex-plugin/plugin.json            Plugin identity and UI metadata
   skills/                              Codex workflows
-  scripts/initialize_harness.py        Safe repository installer
-  assets/starter/                      Files installed into target repositories
+  scripts/                             GitHub lifecycle and migration tools
+  prompts/                             Local worker contracts
+  schemas/                             Local machine-readable contracts
+  references/github-state.md           Canonical remote-state design
 tests/                                 Plugin management tests
 ```
 
@@ -56,32 +58,32 @@ $webapp-harness:orchestrate-development-cycle
 `/plugins` manages installation and `/skills` opens the skill picker. Codex
 plugins do not provide arbitrary custom slash commands.
 
-Initialization leaves the target repository changes uncommitted for review and
-continues into a repository-gap audit. It previews the generated backlog and
-requires separate, explicit confirmation before adding any task. Confirmed
-tasks are added as `proposed`.
+Initialization verifies or guides creation of the GitHub repository, creates a
+configuration issue after confirmation, and continues into a repository-gap
+audit. It does not add files to the target repository. Backlog creation requires
+separate confirmation of the exact proposal SHA-256; confirmed tasks are added
+as `proposed` GitHub sub-issues with native dependency relationships.
 
 Run `$webapp-harness:generate-backlog` independently whenever requirements,
 implementation, tests, or product behavior have drifted. The skill validates
-the proposal, shows every task and its evidence, and will not mutate the
-backlog until you confirm the exact preview. Promote accepted tasks to `ready`
+the proposal, shows every task and its evidence, and will not create GitHub
+issues until you confirm the exact preview. Promote accepted issues to `ready`
 before running a development cycle.
 
 `$webapp-harness:orchestrate-development-cycle` processes ready tasks
 sequentially until the backlog is complete or it reaches a real blocker. Every
 task retains its own implementation, verification, logic-review,
-browser-validation, and commit boundary. In v0.0.10 logic review precedes
-browser validation, phase results are append-only in one canonical run record,
-and non-product browser blockers do not consume product retries. Ask it to run
+browser-validation, evidence, and commit boundary. Lifecycle events and text
+results are append-only issue comments; binary browser evidence is stored as
+an immutable release asset. Logic review precedes browser validation, and
+non-product blockers do not consume product retries. Ask it to run
 “only one task,” “up to N tasks,” or a specific eligible task when you want a
 bounded invocation.
 
-Existing harnesses should reconcile installer conflicts, then preview
-`scripts/harness/migrate_v0_0_10.py --plan`. The migration compacts state and
-exact duplicate result artifacts without deleting screenshots heuristically.
-
-Commit the initialized baseline and return the target repository to a clean
-state before running the first development cycle.
+Existing `.harness` repositories use the initialization skill's plan-first,
+hash-bound migration. It creates remote issues, dependencies, lifecycle events,
+and a redacted legacy archive without deleting local files. Removing tracked
+legacy files remains a separate, explicitly authorized cleanup.
 
 ## Upgrade a published release
 
@@ -94,18 +96,16 @@ codex plugin add webapp-harness@webapp-harness
 codex plugin list | rg webapp-harness
 ```
 
-Start a new Codex chat so the refreshed skills are loaded. The plugin update
-does not rewrite harness files that were copied into application repositories.
-Enter each initialized repository and run:
+Start a new Codex chat so the refreshed skills are loaded. Enter each managed
+repository and run:
 
 ```text
 $webapp-harness:initialize-harness
 ```
 
-The initializer plans the upgrade, creates newly introduced files, and
-preserves conflicting repository adaptations for review. After setup
-validation it also previews a new gap-based backlog and asks separately before
-appending any proposed tasks.
+The initializer validates or repairs the control issue after explicit
+confirmation. It also previews a new gap-based backlog and asks separately
+before creating any proposed issues.
 
 ## Update an installed development build
 

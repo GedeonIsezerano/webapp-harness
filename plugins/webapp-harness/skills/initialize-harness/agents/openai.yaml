@@ -1,4 +1,4 @@
 interface:
-  display_name: "Initialize Harness"
-  short_description: "Install, adapt, and propose the first backlog"
-  default_prompt: "Use $webapp-harness:initialize-harness to initialize this repository and preview an evidence-backed backlog for my confirmation."
+  display_name: "Initialize GitHub Harness"
+  short_description: "Configure issue-backed harness state"
+  default_prompt: "Use $webapp-harness:initialize-harness to configure GitHub issue-backed harness state without adding repository state files."

@@ -1,7 +1,7 @@
 {
   "name": "webapp-harness",
-  "version": "0.0.10",
-  "description": "Install and operate a deterministic sequential web-application development harness with evidence-backed backlog generation.",
+  "version": "0.1.0",
+  "description": "Operate a deterministic GitHub issue-backed web-application development harness with evidence-backed backlog generation.",
   "author": {
     "name": "Gedeon Isezerano"
   },
@@ -15,11 +15,11 @@
   "interface": {
     "displayName": "Webapp Harness",
     "shortDescription": "Generate and complete verified sequential backlogs.",
-    "longDescription": "Install a repository-native harness, audit evidence-backed gaps into a user-confirmed backlog, then process ready tasks sequentially through implementation, verification, logic review, browser validation, and per-task commits until complete.",
+    "longDescription": "Configure a GitHub issue-backed harness without adding repository state files, audit evidence-backed gaps into a user-confirmed issue backlog, then process ready tasks sequentially through implementation, verification, logic review, browser validation, and per-task commits until complete.",
     "developerName": "Gedeon Isezerano",
     "category": "Productivity",
     "capabilities": [
-      "Repository setup",
+      "GitHub repository setup",
       "Evidence-backed backlog generation",
       "Sequential development",
       "Browser validation",

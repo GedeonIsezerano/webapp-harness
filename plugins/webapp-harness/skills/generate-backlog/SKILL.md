@@ -1,115 +1,82 @@
 ---
 name: generate-backlog
-description: Audit an initialized Webapp Harness repository for evidence-backed implementation, verification, documentation, or user-experience gaps; generate a validated proposed task list; show it to the user; and append only the explicitly confirmed proposal to `.harness/backlog.json`. Use after harness initialization, when requirements and implementation have drifted, when failing checks expose missing work, or when the user asks to identify gaps or build, refresh, or extend the harness backlog.
+description: Audit a GitHub issue-backed Webapp Harness repository for evidence-backed implementation, verification, documentation, or user-experience gaps; preview a hash-bound proposal; and create only the explicitly confirmed parent and task issues with native dependencies. Use after initialization or whenever requirements, implementation, tests, or the existing GitHub issue backlog have drifted.
 ---
 
 # Generate Backlog
 
-Generate proposed tasks from observed repository gaps. Preview the complete
-proposal and obtain fresh, explicit user confirmation before changing the
-durable backlog.
+Create confirmed GitHub task issues without repository state files.
 
 ## Preflight
 
-1. Resolve the Git root and read all applicable `AGENTS.md` files.
-2. Require an initialized harness with `.harness/config.json`,
-   `.harness/backlog.json`, `.harness/completed-tasks.json`,
-   `.harness/schema/backlog-proposal.schema.json`, and
-   `scripts/harness/merge_backlog_proposal.py`.
-3. Run:
+Read applicable `AGENTS.md` and
+`<plugin-root>/references/github-state.md`, resolving the absolute plugin root
+from this skill's location. Use absolute plugin paths to resolve resources and
+validate remote state:
 
-   ```bash
-   uv run python -B scripts/harness/validate_state.py
-   ```
+```bash
+python3 <plugin-root>/scripts/github_harness.py resources
+python3 <plugin-root>/scripts/github_harness.py validate \
+  --root <repo-root> --repo <owner/repo>
+```
 
-   Stop on invalid state. Do not select or implement a task.
-4. Require at least one usable entry in
-   `.harness/config.json.verification_profiles`. If none exists, stop and
-   report that initialization must configure a real command before runnable
-   backlog tasks can be proposed.
-5. Determine the audit scope from the user's request. If none was supplied,
-   audit the repository's documented product behavior, implementation, tests,
-   verification commands, and existing backlog without inventing requirements.
+Require exactly one valid control issue and at least one usable verification
+profile. Stop on invalid markers, multiple active tasks, event-chain failures,
+missing GitHub access, or absent configuration. Do not select work.
 
 ## Audit into a temporary proposal
 
-Create a dedicated temporary directory with `mktemp -d`. Keep the proposal
-outside the repository until it is confirmed.
+Create a `mktemp -d` directory outside the repository. Spawn one temporary
+read-only audit worker. Give it the installed `backlog-auditor.md`, proposal
+and task schemas, configuration snapshot, existing open task snapshots and
+relationships, repository instructions, requested scope, relevant requirements,
+and matching installed review skills. Do not give it GitHub write permission.
+If workers are unavailable, perform the same read-only audit directly.
 
-Spawn one temporary read-only audit subagent. This skill explicitly authorizes
-that delegation. Direct it to read `.harness/prompts/backlog-auditor.md`, then
-give it:
+The schema requires:
 
-- the repository root and requested audit scope;
-- the exact temporary proposal path it must write;
-- the live backlog, compact completion index, proposal schema, task schema, and
-  harness config paths; do not provide the completion archive unless the audit
-  needs historical evidence;
-- relevant requirement and product documentation paths;
-- applicable repository instructions;
-- installed technology-specific audit or review skills it should use.
+- stable proposal keys and native-dependency keys;
+- concrete gap evidence and acceptance criteria;
+- real verification profiles and browser need;
+- non-exclusive `recommended_paths` with reasons;
+- only hard delegated-worker `forbidden_paths`, also with reasons.
 
-Do not give it permission to modify the repository. If subagents are
-unavailable, perform the same read-only audit in the current context and write
-the temporary proposal yourself.
-
-Run the deterministic proposal validator:
-
-```bash
-uv run python -B scripts/harness/merge_backlog_proposal.py \
-  --proposal <temporary-proposal.json> --plan
-```
-
-Repair malformed proposals in the temporary file and rerun `--plan`. Do not
-weaken the schema or merge contract to make a proposal pass.
+Recommended paths are guidance, not an allowlist. The main agent may later make
+an executive task-level forbidden-path override; higher-authority instructions
+and secrets remain outside that mechanism.
 
 ## Preview and confirm
 
-Present every proposed task to the user before applying it. Include:
-
-- ID, title, priority, and dependencies;
-- the observed gap and its evidence location;
-- acceptance criteria and verification requirements;
-- allowed and forbidden paths;
-- the proposal SHA-256 printed by `--plan`.
-
-Then stop and ask: “Confirm adding these tasks to `.harness/backlog.json` as
-`proposed`?”
-
-The user may confirm all tasks, request edits or a subset, or cancel. The
-request that invoked this skill is not confirmation. Never infer approval from
-silence, initialization approval, or a general request to generate a backlog.
-
-If the user requests any edit or subset, revise the temporary proposal, rerun
-`--plan`, show the full revised preview and new SHA-256, and request fresh
-confirmation. Do not reuse confirmation for a different proposal hash.
-
-## Apply only the confirmed proposal
-
-After explicit confirmation, apply the exact previewed file and hash:
+Run:
 
 ```bash
-uv run python -B scripts/harness/merge_backlog_proposal.py \
-  --proposal <temporary-proposal.json> \
-  --apply --confirmed --expected-sha256 <previewed-sha256>
-uv run python -B scripts/harness/validate_state.py
+python3 <plugin-root>/scripts/github_harness.py proposal \
+  --root <repo-root> --repo <owner/repo> \
+  --proposal <temporary-proposal.json> --plan
 ```
 
-Report the appended task IDs. Tasks remain `proposed`; do not silently make
-them runnable. Explain that an approved task can be promoted with:
+Repair malformed temporary output without weakening the contract. Present
+every task, evidence, criteria, dependencies, verification, recommended paths,
+forbidden paths, and the exact proposal SHA-256. Ask for confirmation of that
+exact proposal. The invoking request, silence, initialization approval, or a
+confirmation for another digest is not approval.
+
+After exact confirmation:
 
 ```bash
-uv run python -B scripts/harness/update_task_state.py <task-id> ready \
-  --reason user_approved
+python3 <plugin-root>/scripts/github_harness.py proposal \
+  --root <repo-root> --repo <owner/repo> \
+  --proposal <temporary-proposal.json> --apply --confirmed \
+  --expected-sha256 <previewed-sha256>
 ```
 
-End by noting that `$webapp-harness:generate-backlog` can be run again whenever
-new gaps appear.
+Report the parent and task issue URLs. Created tasks remain `proposed`; do not
+silently promote or implement them. Promotion to `ready` is a separate explicit
+decision recorded with the transition command.
 
 ## Boundaries
 
-- Never overwrite, delete, or mutate an existing backlog task.
-- Never write `.harness/backlog.json` without explicit confirmation.
-- Never add speculative tasks without concrete gap evidence.
-- Never convert generated tasks from `proposed` to `ready`.
-- Never start the development-cycle skill, commit, deploy, publish, or push.
+- Do not create issues before confirmation.
+- Do not mutate an existing task contract or reuse a colliding proposal key.
+- Do not write `.harness` or any proposal into the repository.
+- Do not commit, push, deploy, publish, or start the development cycle.

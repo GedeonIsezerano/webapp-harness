@@ -1,103 +1,100 @@
 ---
 name: initialize-harness
-description: Initialize, upgrade, or repair the sequential web-development harness in the current Git repository, then audit repository gaps and preview a proposed backlog for explicit user confirmation. Use when a repository does not yet contain `.harness`, when starter files must be merged safely with existing Python or agent configuration, or when an installed harness must be checked against this plugin without starting a product task.
+description: Initialize, upgrade, repair, or migrate the GitHub issue-backed sequential web-development harness for the current Git repository without adding harness state files to the repository. Use when a project lacks a harness control issue, has no GitHub remote, still has legacy `.harness` data, needs verified configuration, or needs its first evidence-backed backlog proposal.
 ---
 
 # Initialize Harness
 
-Install the repository-native harness, then generate a confirmable proposed
-backlog without implementing or selecting a product task.
+Configure GitHub as durable lifecycle authority, then preview the first backlog.
+Do not copy plugin scripts, prompts, schemas, tests, dependencies, or state into
+the target repository.
 
-## Workflow
+## Read the contract
 
-1. Resolve the Git root from the current working directory. Stop if the target
-   is not a Git worktree.
-2. Inspect all applicable `AGENTS.md` files plus existing `.agents`, `.codex`,
-   `.harness`, `scripts`, `tests`, `docs`, `pyproject.toml`, and `uv.lock`.
-3. Resolve the plugin root from this skill's installed path. The collision-aware
-   installer is `../../scripts/initialize_harness.py` relative to this skill
-   directory.
-4. Run the installer in plan mode:
+Resolve the absolute plugin root from this skill's location and read
+`<plugin-root>/references/github-state.md`. Use absolute plugin paths for every
+helper invocation:
 
-   ```bash
-   python3 <plugin-root>/scripts/initialize_harness.py --root <repo-root> --plan
-   ```
+```bash
+python3 <plugin-root>/scripts/github_harness.py resources
+```
 
-5. Review every reported conflict. Never overwrite repository files blindly.
-   Preserve useful existing configuration and merge only the harness-specific
-   portions. If conflicts are intentionally preserved, run:
+to resolve installed prompt and schema paths. Read all applicable repository
+`AGENTS.md` files before any action.
 
-   ```bash
-   python3 <plugin-root>/scripts/initialize_harness.py \
-     --root <repo-root> --apply --preserve-conflicts
-   ```
+## Establish the GitHub repository
 
-   Without conflicts, omit `--preserve-conflicts`.
-6. Merge `<plugin-root>/assets/pyproject-fragment.toml` into the repository's
-   existing `pyproject.toml`. If none exists, use the fragment as the starting
-   file and set project metadata appropriate to the target repository. Do not
-   create a requirements file. Deduplicate dependencies, preserve unrelated
-   dependency groups and tool settings, retain existing pytest `addopts`, and
-   append `tests/harness` to existing pytest `testpaths` instead of replacing
-   other test roots.
-7. Merge `<plugin-root>/assets/agents-fragment.md` into the root `AGENTS.md`.
-   Preserve all existing repository guidance. Do not install repo-local copies
-   of these plugin skills unless the user explicitly requests portable mode.
-8. Inspect the actual framework, package manager, monorepo boundaries, start
-   commands, lint, typecheck, unit, integration, build, and E2E commands.
-   Populate `.harness/config.json` only with commands that exist and work.
-   Use the verification-profile structure documented in `docs/harness.md`.
-   Populate the optional `app` section (`start_command`, `health_url`,
-   `notes`) whenever the repository has a discoverable dev server; browser
-   validation depends on it and reports `INCOMPLETE` without it.
-   Populate optional `browser.playbook_paths`, `fixture_notes`, and
-   `profile_notes` only from maintained repository evidence. Never store
-   credentials. These shortcuts prevent validators from rediscovering stable
-   routes and setup on every task.
-   Omit commands that fail discovery checks and report why they were omitted.
-9. Preserve existing Git hooks and repository policies. Lifecycle boundaries
-   require a fully clean worktree; do not configure path exceptions that could
-   leak one task's harness metadata into another task's commit.
-10. When upgrading a pre-v0.0.10 harness, reconcile the new schemas and scripts
-    first, then preview the lossless migration before using the new validator:
+1. Resolve the Git root. Stop if it is not a Git worktree.
+2. Inspect all remotes without assuming `origin` is GitHub.
+3. Verify `gh` exists and `gh auth status` succeeds.
+4. Resolve the GitHub repository and confirm Issues are enabled. If an existing
+   non-GitHub `origin` must remain, use a separate `github` remote.
+5. If no GitHub repository exists, obtain the exact owner, repository name,
+   visibility, remote name, and whether to push the current branch. Show the
+   exact `gh repo create` and push operations and require explicit confirmation
+   before creating the repository or pushing. Never infer public/private
+   visibility or replace an existing remote.
 
-    ```bash
-    uv run python -B scripts/harness/migrate_v0_0_10.py --plan
-    ```
+## Build and apply configuration
 
-    Show the exact plan. Apply it only when the user explicitly approves that
-    migration, using `--apply --confirmed`. Never infer migration approval from
-    permission to initialize or upgrade. If approval is pending, pause the
-    upgrade here; old state is not expected to validate against the new schema.
-11. Run:
+Inspect the real framework, package manager, monorepo boundaries, start command,
+health URL, lint, typecheck, unit, integration, build, and E2E commands. Include
+only commands proven to exist. Put a schema-v2 configuration JSON in a
+`mktemp -d` directory outside the repository. Never store credentials.
 
-   ```bash
-   uv sync --dev
-   uv run python -B -c "from pathlib import Path; [compile(path.read_text(), str(path), 'exec') for path in Path('scripts/harness').glob('*.py')]"
-   uv run pytest tests/harness
-   uv run python -B scripts/harness/validate_state.py
-   ```
+Preview without writing:
 
-12. Re-run installer plan mode. Explain any remaining conflicts as intentional
-    repository adaptations.
-13. Report created and merged files, detected commands, validation results, and
-    limitations.
-14. Read `../generate-backlog/SKILL.md` relative to this skill directory and
-    follow its audit, validation, preview, and confirmation workflow. This is a
-    required part of initialization, not a suggestion-only handoff. Never treat
-    the user's approval to initialize as approval to write the proposed tasks.
-15. After the user confirms, revises, or cancels the proposal, report the
-    outcome and suggest `$webapp-harness:generate-backlog` for future gap
-    audits. Stop without selecting a task or invoking the cycle skill.
+```bash
+python3 <plugin-root>/scripts/initialize_harness.py \
+  --root <repo-root> --repo <owner/repo> --config <temporary-config.json> --plan
+```
 
-## Safety boundaries
+Show the target, labels, configuration digest, and control-issue operation.
+Require explicit confirmation, then apply the exact configuration:
 
-- Do not replace an existing `AGENTS.md`, `pyproject.toml`, `uv.lock`,
-  `.harness`, `scripts`, or `tests` tree wholesale.
-- Do not run `select_next_task.py`.
-- Do not implement product work.
-- Do not append generated backlog tasks without the separate confirmation
-  required by the generate-backlog skill.
-- Do not commit unless the user explicitly requests it.
-- Do not claim browser tooling is configured until it is exercised in the
-  target application.
+```bash
+python3 <plugin-root>/scripts/initialize_harness.py \
+  --root <repo-root> --repo <owner/repo> --config <temporary-config.json> \
+  --apply --confirmed
+```
+
+The initializer may create labels and one `[Harness] Configuration` issue. It
+must not write project files. When the plan reports
+`update_requires_confirmation` or `reopen_requires_confirmation`, show the
+complete repair and require explicit confirmation, then add
+`--update-existing` to the confirmed apply. Never overwrite or reopen the
+control issue implicitly.
+
+## Migrate legacy state
+
+If `.harness` exists, preview the non-destructive migration:
+
+```bash
+python3 <plugin-root>/scripts/migrate_legacy_harness.py \
+  --root <repo-root> --repo <owner/repo> --plan
+```
+
+Show the issue count, completion stubs, archive bytes/files, excluded
+sensitive-looking files, and migration SHA-256. Require separate explicit
+confirmation before `--apply --confirmed --expected-sha256 <digest>`.
+Migration is resumable, uploads the complete non-sensitive legacy state
+archive, and never deletes local files or uploads credential files.
+
+After validating the remote mapping and archive digest, explain that removal
+of tracked legacy `.harness`, `scripts/harness`, `tests/harness`, and harness-only
+dependency fragments requires a separate exact cleanup authorization and
+commit. Preserve customized or conflicting files.
+
+## Generate the first backlog
+
+Read `../generate-backlog/SKILL.md` and follow it. Initialization approval is
+not backlog approval. Stop without selecting or implementing a task.
+
+## Boundaries
+
+- Do not create issue templates, GitHub Actions workflows, local state files,
+  or repository instruction fragments.
+- Do not install, reinstall, publish, commit, deploy, or push unless separately
+  and explicitly authorized.
+- Do not claim configuration works until its commands and relevant browser
+  startup path are exercised.

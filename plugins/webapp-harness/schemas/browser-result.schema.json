@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["issue_number", "run_id", "status", "failure_class", "blocker", "tooling", "preflight", "criteria"],
+  "properties": {
+    "issue_number": {"type": "integer", "minimum": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["PASSED", "FAILED", "INCOMPLETE"]},
+    "failure_class": {"type": ["string", "null"], "enum": ["product", "fixture", "profile", "tooling", "environment", "scope", null]},
+    "blocker": {"type": ["string", "null"]},
+    "tooling": {"enum": ["browser_use", "chrome_control", "computer_use", "playwright", "other"]},
+    "preflight": {
+      "type": "object",
+      "required": ["health", "fixtures", "profiles", "tooling"],
+      "properties": {
+        "health": {"type": "boolean"},
+        "fixtures": {"type": "boolean"},
+        "profiles": {"type": "boolean"},
+        "tooling": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "steps", "observed", "expected", "evidence"],
+        "properties": {
+          "id": {"type": "string"},
+          "status": {"enum": ["PASSED", "FAILED", "INCOMPLETE"]},
+          "steps": {"type": "array", "items": {"type": "string"}},
+          "observed": {"type": "string"},
+          "expected": {"type": "string"},
+          "evidence": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

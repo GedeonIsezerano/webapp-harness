@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["issue_number", "run_id", "summary", "files_changed", "tests_changed", "browser_flows", "risks"],
+  "properties": {
+    "issue_number": {"type": "integer", "minimum": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "summary": {"type": "string", "minLength": 1},
+    "files_changed": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "tests_changed": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "browser_flows": {"type": "array", "items": {"type": "string"}},
+    "risks": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}
